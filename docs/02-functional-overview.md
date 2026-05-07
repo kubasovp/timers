@@ -56,6 +56,11 @@ Canonical: docs/02-functional-overview.md
 - Некорректная команда для текущего состояния возвращает доменную ошибку.
 - В UI такая ошибка отображается как нейтральное пользовательское уведомление (без технических деталей).
 
+Canonical state machine artifacts:
+- `docs/state-machines/pomodoro.md`
+- `docs/state-machines/custom-timer.md`
+- `docs/state-machines/reminder.md`
+
 ## 2.3 Минимальная модель данных
 
 - `pomodoro_profiles`

@@ -25,6 +25,19 @@
 - `adr/ADR-001-desktop-shell-tauri.md`
 - `adr/ADR-002-time-semantics-for-reminders.md`
 
+## Policies (Draft)
+Черновые операционные и privacy-политики.
+
+- `release-and-update-policy.md`
+- `privacy-telemetry-policy.md`
+
+## State Machines
+Каноничные артефакты состояний и переходов доменных сущностей.
+
+- `state-machines/pomodoro.md`
+- `state-machines/custom-timer.md`
+- `state-machines/reminder.md`
+
 ## UI Prototype
 HTML/CSS макет экранов для быстрых UX-итераций и обсуждения UI-состояний.
 

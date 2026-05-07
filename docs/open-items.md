@@ -17,16 +17,22 @@ Canonical: docs/open-items.md
 - минимальный контракт автообновления (post-MVP ready baseline);
 - политика телеметрии/приватности (MVP baseline + post-MVP).
 
-## Открытые вопросы перед удалением файла
+## Decision Index
 
-1. **Где хранить state machine артефакты как canonical source?**
-   - Варианты: отдельный `docs/state-machines/*.md` или разделы в `02-functional-overview.md`.
+Файл сохранён как индекс решений и ссылок на canonical документы.
 
-2. **Нужно ли выделить отдельный документ release/update policy?**
-   - Сейчас есть baseline-правила, но нет полного операционного процесса релиза и обновлений.
+### Architecture & Domain
+- Functional overview: `docs/02-functional-overview.md`
+- State machines:
+  - `docs/state-machines/pomodoro.md`
+  - `docs/state-machines/custom-timer.md`
+  - `docs/state-machines/reminder.md`
+- Quality & constraints: `docs/03-quality-and-constraints.md`
+- ADR-002 timezone/DST: `docs/adr/ADR-002-time-semantics-for-reminders.md`
 
-3. **Нужен ли отдельный privacy документ (consent, retention, data map)?**
-   - Сейчас есть архитектурные правила, но нет пользовательского policy-текста.
+### Operations
+- Release/update policy (draft): `docs/release-and-update-policy.md`
+- Privacy/telemetry policy (draft): `docs/privacy-telemetry-policy.md`
 
-4. **Нужно ли хранить этот файл как "decision index" вместо удаления?**
-   - Если да, файл должен содержать только ссылки на canonical документы без дублирования содержимого.
+### Next review checkpoint
+- После стабилизации state machine и policy-документов проверить, можно ли удалить этот индекс или оставить как навигационный entrypoint.
