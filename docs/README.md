@@ -24,3 +24,10 @@
 
 - `adr/ADR-001-desktop-shell-tauri.md`
 - `adr/ADR-002-time-semantics-for-reminders.md`
+
+## UI Prototype
+HTML/CSS макет экранов для быстрых UX-итераций и обсуждения UI-состояний.
+
+- `ui-prototype/index.html`
+- `ui-prototype/styles.css`
+- `ui-prototype/README.md`
