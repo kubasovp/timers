@@ -1,9 +1,9 @@
 # 03. Качество и ограничения
 
-Status: Draft  
-Owner: github.com/kubasovp  
-Last reviewed (UTC): 2026-05-07  
-Scope: Ограничения стека, NFR, риски и проверка полноты  
+Status: Draft
+Owner: github.com/kubasovp
+Last reviewed (UTC): 2026-05-07
+Scope: Ограничения стека, NFR, риски и проверка полноты
 Canonical: docs/03-quality-and-constraints.md
 
 ## 3.1 Архитектурные ограничения
@@ -21,13 +21,30 @@ Canonical: docs/03-quality-and-constraints.md
 - SQLite — единый источник истины для состояния таймеров/напоминаний/настроек.
 - Любой новый интерфейс (GUI/CLI/daemon) работает через один и тот же набор use-case команд.
 
+### Development view (MVP baseline)
+
+Модульные границы (обязательные):
+- `core` — доменная модель, расчёты времени, state machine, доменные ошибки;
+- `application` — use-case слой (команды/сценарии), orchestration, транзакционные границы;
+- `adapters` — UI/Tauri notifications/storage/clock и другие внешние порты;
+- `infra` — технические детали: SQLite-мэппинги, миграции, конфиги, wiring.
+
+Dependency rule (обязательный):
+- допускается только направление `outer -> inner`;
+- `adapters` и `infra` зависят от `application`/`core`;
+- `application` может зависеть от `core`;
+- `core` ни от кого не зависит (кроме stdlib/доменных примитивов).
+
+Контроль правила зависимостей:
+- линтер/архитектурный тест в CI проверяет запрет обратных импортов (`inner -> outer`).
+
 Минимальный обязательный набор use-case команд:
 - `startTimer`
 - `pauseTimer`
 - `addReminder`
 - `listReminders`
 
-Анти-паттерн (не допускается): `Vue component -> считает время -> пишет в local state`  
+Анти-паттерн (не допускается): `Vue component -> считает время -> пишет в local state`
 Целевой поток: `Vue component -> command/use-case -> core -> storage`
 
 ## 3.1.2 Версионирование, миграции и релизный контур (MVP-ready)
@@ -46,6 +63,12 @@ Canonical: docs/03-quality-and-constraints.md
 - Таймеры/напоминания не «теряются» после сна/перезапуска.
 - Нет зависимости от «идеального» тика `setInterval`.
 - Целевая задержка срабатывания уведомления: не более 1 секунды.
+- Daily reminders в MVP работают в режиме `local-floating`.
+- При DST spring-forward (локальное время отсутствует) событие сдвигается на ближайшее валидное локальное время.
+- При DST fall-back (локальное время двусмысленно) выбирается первое вхождение времени; напоминание срабатывает один раз на локальную календарную дату.
+- При смене timezone устройства:
+  - `local-floating` пересчитывается в новой локальной timezone;
+  - `fixed-zone` (future) остаётся привязанным к выбранной IANA timezone.
 
 ### Предсказуемость UX
 - Ясные состояния активен/пауза/завершён/пропущен/skip.
@@ -60,6 +83,16 @@ Canonical: docs/03-quality-and-constraints.md
 - Явная доменная модель времени.
 - Трассируемость требований (ID F-POM/F-TMR/F-REM/F-WIN).
 - Явные модульные границы (ports/adapters), позволяющие подключить CLI и daemon без переписывания core.
+
+### Проверяемость (MVP quality gates)
+- Обязательные сценарии до первого релиза:
+  - happy-path;
+  - sleep/resume;
+  - reboot/restart reconcile;
+  - DST boundary.
+- Проверка SLA уведомлений (`<= 1 сек`):
+  - инструментированные integration-тесты;
+  - ручная валидация минимум на 2 платформах.
 
 ## 3.3 Риски
 

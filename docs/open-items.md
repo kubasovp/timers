@@ -1,18 +1,24 @@
 # Open Items / To-Do for Architecture
 
-Status: Draft  
-Owner: github.com/kubasovp  
-Last reviewed (UTC): 2026-05-07  
-Scope: Список архитектурных вопросов и решений, требующих фиксации  
+Status: Draft
+Owner: github.com/kubasovp
+Last reviewed (UTC): 2026-05-07
+Scope: Список архитектурных вопросов и решений, требующих фиксации
 Canonical: docs/open-items.md
 
 ## Что нужно сделать
 
 1. **Статусы и жизненный цикл сущностей требуют формализации.**
-   - Желательно отдельная state machine для Pomodoro, Timer, Reminder.
+   - Решение: фиксируем отдельные state machine для Pomodoro, Timer, Reminder.
+   - Формат: таблица переходов + диаграмма состояний для каждой сущности.
+   - Политика некорректных команд: доменная ошибка + пользовательское уведомление в нейтральной формулировке.
 
 2. **Не определена политика timezone/DST.**
-   - Критично для ежедневных напоминаний.
+   - Решение для MVP: `local-floating`.
+   - `fixed-zone` остаётся optional/future как расширение.
+   - DST spring-forward: перенос на ближайшее валидное локальное время.
+   - DST fall-back: выбирать первое вхождение двусмысленного локального времени; не допускать двойного срабатывания в одну локальную календарную дату.
+   - При смене timezone устройства: `local-floating` пересчитывать в новую локальную TZ; `fixed-zone` (future) оставлять в выбранной IANA TZ.
 
 3. **Нужны эксплуатационные метрики и тестовые бюджеты.**
    - drift, startup-reconcile latency, поведение при длительном сне устройства.
@@ -21,11 +27,9 @@ Canonical: docs/open-items.md
    - Контроль размера БД, архивирование, vacuum/compaction.
 
 5. **Нужно зафиксировать runtime-модель уведомлений для CLI-сценариев.**
-   - Варианты:
-     - A: CLI только пишет в SQLite, уведомления показывает desktop app при запуске.
-     - B: Отдельный `timers-daemon`, который наблюдает БД и показывает уведомления.
-     - C: Системные планировщики (systemd user timers / Task Scheduler / launchd).
-   - Для MVP выбрать A или B и явно описать ограничения UX.
+   - Решение для MVP: CLI не реализуется.
+   - Требование: сохранить архитектурную возможность подключения CLI без изменения `core`/`application`.
+   - Post-MVP: вернуться к выбору модели A/B/C.
 
 6. **Нужно зафиксировать минимальный контракт автообновления (без полной реализации в MVP).**
    - Формат `latest.json` и поля версии/платформы/checksum/signature.
@@ -39,5 +43,6 @@ Canonical: docs/open-items.md
    - Явные правила consent, анонимизации и retention.
 
 8. **Нужен development view с модульными границами и зависимостями.**
-   - Минимум: `core`, `application/use-cases`, `adapters (ui/cli/notifications/storage)`.
-   - Зафиксировать dependency rule: outer layers зависят от inner layers, но не наоборот.
+   - Решение: `core`, `application`, `adapters`, `infra`.
+   - Dependency rule: только `outer -> inner`, запрет обратных импортов.
+   - Контроль: линтер/арх-тест в CI.
