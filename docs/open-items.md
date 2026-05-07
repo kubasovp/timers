@@ -6,43 +6,33 @@ Last reviewed (UTC): 2026-05-07
 Scope: Список архитектурных вопросов и решений, требующих фиксации
 Canonical: docs/open-items.md
 
-## Что нужно сделать
+## Перенесённые решения
 
-1. **Статусы и жизненный цикл сущностей требуют формализации.**
-   - Решение: фиксируем отдельные state machine для Pomodoro, Timer, Reminder.
-   - Формат: таблица переходов + диаграмма состояний для каждой сущности.
-   - Политика некорректных команд: доменная ошибка + пользовательское уведомление в нейтральной формулировке.
+Следующие пункты уже перенесены в профильные документы и не требуют отдельной фиксации здесь:
+- state machine подход (формат + политика некорректных команд);
+- timezone/DST политика для MVP;
+- development view и dependency rule;
+- метрики/тестовые бюджеты (MVP baseline);
+- стратегия роста истории БД (MVP baseline);
+- минимальный контракт автообновления (post-MVP ready baseline);
+- политика телеметрии/приватности (MVP baseline + post-MVP).
 
-2. **Не определена политика timezone/DST.**
-   - Решение для MVP: `local-floating`.
-   - `fixed-zone` остаётся optional/future как расширение.
-   - DST spring-forward: перенос на ближайшее валидное локальное время.
-   - DST fall-back: выбирать первое вхождение двусмысленного локального времени; не допускать двойного срабатывания в одну локальную календарную дату.
-   - При смене timezone устройства: `local-floating` пересчитывать в новую локальную TZ; `fixed-zone` (future) оставлять в выбранной IANA TZ.
+## Decision Index
 
-3. **Нужны эксплуатационные метрики и тестовые бюджеты.**
-   - drift, startup-reconcile latency, поведение при длительном сне устройства.
+Файл сохранён как индекс решений и ссылок на canonical документы.
 
-4. **Нужна стратегия работы с ростом истории.**
-   - Контроль размера БД, архивирование, vacuum/compaction.
+### Architecture & Domain
+- Functional overview: `docs/02-functional-overview.md`
+- State machines:
+  - `docs/state-machines/pomodoro.md`
+  - `docs/state-machines/custom-timer.md`
+  - `docs/state-machines/reminder.md`
+- Quality & constraints: `docs/03-quality-and-constraints.md`
+- ADR-002 timezone/DST: `docs/adr/ADR-002-time-semantics-for-reminders.md`
 
-5. **Нужно зафиксировать runtime-модель уведомлений для CLI-сценариев.**
-   - Решение для MVP: CLI не реализуется.
-   - Требование: сохранить архитектурную возможность подключения CLI без изменения `core`/`application`.
-   - Post-MVP: вернуться к выбору модели A/B/C.
+### Operations
+- Release/update policy (draft): `docs/release-and-update-policy.md`
+- Privacy/telemetry policy (draft): `docs/privacy-telemetry-policy.md`
 
-6. **Нужно зафиксировать минимальный контракт автообновления (без полной реализации в MVP).**
-   - Формат `latest.json` и поля версии/платформы/checksum/signature.
-   - Политика проверки подписи и install mode (on restart / explicit install).
-   - Что происходит при недоступности сети/манифеста.
-
-7. **Нужно зафиксировать политику телеметрии и приватности.**
-   - Слой 1: server-side downloads (без клиентских идентификаторов).
-   - Слой 2 (опционально): first-run event.
-   - Слой 3 (опционально): update-check как прокси активных установок.
-   - Явные правила consent, анонимизации и retention.
-
-8. **Нужен development view с модульными границами и зависимостями.**
-   - Решение: `core`, `application`, `adapters`, `infra`.
-   - Dependency rule: только `outer -> inner`, запрет обратных импортов.
-   - Контроль: линтер/арх-тест в CI.
+### Next review checkpoint
+- После стабилизации state machine и policy-документов проверить, можно ли удалить этот индекс или оставить как навигационный entrypoint.

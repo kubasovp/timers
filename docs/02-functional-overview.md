@@ -50,6 +50,17 @@ Canonical: docs/02-functional-overview.md
   3. сформировать список пропущенных напоминаний;
   4. сдвинуть `nextAt` для повторяющихся правил.
 
+## 2.4 Правила state machine и обработки команд
+
+- Для Pomodoro, Custom Timer, Reminder поддерживается формализация через таблицу переходов + диаграмму состояний.
+- Некорректная команда для текущего состояния возвращает доменную ошибку.
+- В UI такая ошибка отображается как нейтральное пользовательское уведомление (без технических деталей).
+
+Canonical state machine artifacts:
+- `docs/state-machines/pomodoro.md`
+- `docs/state-machines/custom-timer.md`
+- `docs/state-machines/reminder.md`
+
 ## 2.3 Минимальная модель данных
 
 - `pomodoro_profiles`
