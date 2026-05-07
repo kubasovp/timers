@@ -36,3 +36,4 @@ Scope: Быстрый браузерный макет экранов MVP без 
 
 - Использовать `data-context` и `data-state` как якоря для обсуждения сценариев.
 - Если добавляется новое состояние в UI, оно должно быть отражено в state machine для соответствующей сущности.
+- Для reminders использовать каноничные состояния из `docs/state-machines/reminder.md` (`enabled`, `due`, `snoozed`, `done`, `disabled`, `deleted`).
