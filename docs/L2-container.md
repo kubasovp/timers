@@ -26,12 +26,16 @@ flowchart TB
   UI <--> TAURI
   SCHED --> TAURI
   TAURI --> NOTIF
-  CORE --> UPDATE
-  CORE --> TELEMETRY
+  UI --> UPDATE
+  TAURI --> UPDATE
+  UI --> TELEMETRY
+  TAURI --> TELEMETRY
 ```
 
 ### Пояснения к контейнерам (future-ready)
 
 - `Domain Core` и `Scheduler` образуют платформенно-агностичное ядро.
 - `Frontend UI` и будущий `CLI Interface` — разные адаптеры к одному ядру.
-- `Update Check Adapter` и `Telemetry Adapter` в MVP могут быть отключены; их отказ не должен ломать локальные сценарии.
+- `Update Check Adapter` и `Telemetry Adapter` — внешние adapter-слои, которые не вызываются напрямую из `Domain Core`.
+- Интеграция с update/telemetry инициируется outer layers (`UI`/`Tauri`) и передаёт в core только доменно-нейтральные данные/события.
+- Эти адаптеры в MVP могут быть отключены; их отказ не должен ломать локальные сценарии.
