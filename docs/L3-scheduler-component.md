@@ -8,7 +8,7 @@ Canonical: docs/L3-scheduler-component.md
 
 ```mermaid
 flowchart LR
-  A[Clock Service\nnow()] --> B[Reconcile Service]
+  A[Clock Service<br/>now()] --> B[Reconcile Service]
   C[Session Repository] --> B
   D[Reminder Repository] --> B
   B --> E[Completion Detector]
