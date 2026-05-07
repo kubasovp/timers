@@ -2,7 +2,7 @@
 
 Status: Draft  
 Owner: github.com/kubasovp  
-Last reviewed (UTC): 2026-05-06  
+Last reviewed (UTC): 2026-05-07  
 Scope: Ограничения стека, NFR, риски и проверка полноты  
 Canonical: docs/03-quality-and-constraints.md
 
@@ -11,7 +11,34 @@ Canonical: docs/03-quality-and-constraints.md
 - Desktop shell: Tauri.
 - Frontend: Vue + TypeScript.
 - Local DB: SQLite.
-- Работа офлайн, без внешнего backend.
+- MVP: offline-first, без обязательного внешнего backend для базовых сценариев.
+- Допустимы опциональные online-функции (проверка обновлений, агрегированная телеметрия) при явном feature flag и деградации к offline-режиму.
+
+## 3.1.1 Архитектурные принципы для расширяемости
+
+- UI не содержит бизнес-логики времени; UI только вызывает use-case команды.
+- Доменная логика платформенно-агностична и не зависит от Vue/Tauri API.
+- SQLite — единый источник истины для состояния таймеров/напоминаний/настроек.
+- Любой новый интерфейс (GUI/CLI/daemon) работает через один и тот же набор use-case команд.
+
+Минимальный обязательный набор use-case команд:
+- `startTimer`
+- `pauseTimer`
+- `addReminder`
+- `listReminders`
+
+Анти-паттерн (не допускается): `Vue component -> считает время -> пишет в local state`  
+Целевой поток: `Vue component -> command/use-case -> core -> storage`
+
+## 3.1.2 Версионирование, миграции и релизный контур (MVP-ready)
+
+- Версии приложения по SemVer (`0.1.0`, `0.2.0`, `1.0.0`).
+- Отдельные миграции SQLite с явной фиксацией версии схемы.
+- В `app_settings` хранятся `appVersion` и `dbSchemaVersion`.
+- В релизный процесс включены:
+  - публикация changelog;
+  - сборка артефактов по платформам;
+  - подготовка метаданных для будущего автообновления (`latest.json`, подписи пакетов).
 
 ## 3.2 Ключевые требования к качеству
 
@@ -32,6 +59,7 @@ Canonical: docs/03-quality-and-constraints.md
 ### Поддерживаемость
 - Явная доменная модель времени.
 - Трассируемость требований (ID F-POM/F-TMR/F-REM/F-WIN).
+- Явные модульные границы (ports/adapters), позволяющие подключить CLI и daemon без переписывания core.
 
 ## 3.3 Риски
 
