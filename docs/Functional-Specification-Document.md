@@ -3,7 +3,7 @@
 Project: Local desktop application for Pomodoro, custom timers, and reminders
 Working title: Timers
 Document version: 0.1 (draft)
-Status: Draft
+Status: Legacy / Reference
 Date: 2026-05-04
 Last updated: 2026-05-05
 Owner: github.com/kubasovp
