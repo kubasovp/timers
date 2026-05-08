@@ -44,3 +44,22 @@ HTML/CSS макет экранов для быстрых UX-итераций и 
 - `ui-prototype/index.html`
 - `ui-prototype/styles.css`
 - `ui-prototype/README.md`
+
+
+## Implementation
+Технические документы для реализации (слои, контракты runtime, модель данных).
+
+- `implementation/development-view.md`
+- `implementation/data-model-v1.md`
+- `implementation/scheduler-contract.md`
+- `implementation/platform-lifecycle.md`
+
+## Testing
+План проверок и acceptance gates для MVP.
+
+- `testing/mvp-test-plan.md`
+
+## Documentation Governance
+Правила владения и обновления документации.
+
+- `documentation-governance.md`
