@@ -19,12 +19,16 @@ Canonical: docs/implementation/data-model-v1.md
 1. `active_timer_sessions`
 - `id` (PK)
 - `session_type` (`pomodoro` | `custom_timer`)
-- `status` (`running` | `paused` | `completed` | `cancelled`)
+- `status` (`running` | `paused` | `completed` | `stopped` | `skipped` | `running_work` | `running_break` | `paused_work` | `paused_break`)
 - `started_at_utc`, `ends_at_utc`, `paused_at_utc` nullable
 - `duration_total_sec`
 - `input_hours`, `input_minutes`, `input_seconds` (пользовательский формат ввода для custom timer)
 - `profile_id` nullable (для pomodoro)
 - `version` (optimistic concurrency)
+
+`status` должен сохраняться без потерь относительно canonical state machines:
+- custom timer: `running`/`paused`/`completed`/`stopped`;
+- pomodoro: `running_work`/`running_break`/`paused_work`/`paused_break`/`completed`/`stopped`/`skipped`.
 
 2. `active_reminders`
 - `id` (PK)

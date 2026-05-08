@@ -9,9 +9,11 @@ Canonical: docs/implementation/scheduler-contract.md
 ## 1) Tick model
 
 MVP использует гибрид:
-- периодический polling tick (например, раз в 1 секунду для UI-активности и раз в 5-10 секунд в idle);
+- периодический polling tick с cadence, не нарушающим notification SLA `<= 1с` (базово: `1с` и в активном, и в idle режиме);
 - приоритет обработки ближайшего `next_fire_at_utc` (next-fire-time aware reconcile).
 
+
+Важно: любые оптимизации idle-режима допустимы только если инструментально подтверждено соблюдение SLA из `docs/03-quality-and-constraints.md` (задержка срабатывания уведомления не более 1 секунды).
 Scheduler не полагается только на in-memory интервал; истина — persisted state + UTC timestamps.
 
 ## 2) Misfire policy
