@@ -44,7 +44,7 @@ Canonical: docs/implementation/platform-lifecycle.md
 - Локальная таймзона используется для user-facing представления и local-floating правил.
 - Поведение на DST и timezone switch следует ADR-002.
 
-## 6) Open questions
+## 6) Решения для MVP
 
-- Требуется ли режим degraded-readonly при повреждённой БД, чтобы UI мог показать экспорт/восстановление?
-- Нужен ли явный user-visible recovery report после crash (например, "обработано N пропущенных событий")?
+- Режим `degraded-readonly` при повреждённой БД не вводится в MVP (избыточно для текущего scope).
+- Явный user-visible recovery report после crash не вводится в MVP; достаточно внутреннего лога восстановления.

@@ -37,7 +37,7 @@ Scheduler не полагается только на in-memory интервал
 
 - По умолчанию single-writer scheduler loop.
 - Допустим bounded worker pool для dispatch (например, 2-4 воркера), но с сериализацией по `source_id`.
-- Глобальный лимит задач в полёте обязателен, чтобы не захватывать CPU на storm-сценариях.
+- Глобальный лимит задач в полёте в MVP не вводится; допустимое число параллельных таймеров определяется ресурсами устройства пользователя.
 
 ## 6) Observability
 
@@ -60,7 +60,7 @@ Scheduler не полагается только на in-memory интервал
 - Любой crash во время обработки не должен ломать последующий restart/reconcile.
 - Recovery обязателен через пересчёт от persisted `next_fire_at_utc` и active state.
 
-## 8) Open questions
+## 8) Решения для MVP
 
-- Какой целевой upper bound для `scheduler_reconcile_lag_ms` на слабых машинах?
-- Нужна ли динамическая адаптация tick interval (power-saving mode)?
+- Целевой upper bound для `scheduler_reconcile_lag_ms` заранее не фиксируется; сначала собираем фактические метрики и принимаем решение по результатам.
+- Динамическая адаптация tick interval (power-saving mode) в MVP не вводится; возвращаемся к вопросу при подтверждённой проблеме по CPU/энергопотреблению.

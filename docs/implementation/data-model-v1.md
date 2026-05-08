@@ -21,6 +21,8 @@ Canonical: docs/implementation/data-model-v1.md
 - `session_type` (`pomodoro` | `custom_timer`)
 - `status` (`running` | `paused` | `completed` | `cancelled`)
 - `started_at_utc`, `ends_at_utc`, `paused_at_utc` nullable
+- `duration_total_sec`
+- `input_hours`, `input_minutes`, `input_seconds` (пользовательский формат ввода для custom timer)
 - `profile_id` nullable (для pomodoro)
 - `version` (optimistic concurrency)
 
@@ -43,15 +45,9 @@ Canonical: docs/implementation/data-model-v1.md
 - `cycles_before_long_break`
 - `created_at_utc`, `updated_at_utc`
 
-4. `timer_presets`
-- `id` (PK)
-- `name` (unique)
-- `duration_sec`
-- `created_at_utc`, `updated_at_utc`
-
 ### C. Occurrences/executions
 
-5. `scheduler_occurrences`
+4. `scheduler_occurrences`
 - `id` (PK)
 - `source_type` (`timer` | `reminder`)
 - `source_id`
@@ -62,7 +58,7 @@ Canonical: docs/implementation/data-model-v1.md
 
 ### D. History/event log
 
-6. `history_events`
+5. `history_events`
 - `id` (PK)
 - `aggregate_type` (`timer_session` | `reminder` | `profile`)
 - `aggregate_id`
@@ -72,7 +68,7 @@ Canonical: docs/implementation/data-model-v1.md
 - `causation_id` nullable
 - `correlation_id` nullable
 
-7. `notification_delivery_log`
+6. `notification_delivery_log`
 - `id` (PK)
 - `occurrence_id` (FK -> scheduler_occurrences.id)
 - `channel` (`os_notification`)
@@ -104,7 +100,7 @@ Canonical: docs/implementation/data-model-v1.md
 ## 6) Правила удаления
 
 - Active records: soft-delete предпочтителен для reminders (`is_enabled=false`) в MVP.
-- Presets/profiles: hard-delete разрешён, если нет активной зависимости.
+- Pomodoro profiles: hard-delete разрешён, если нет активной зависимости.
 - History/occurrences: не удаляются синхронно с бизнес-удалением активной сущности.
 
 ## 7) Что считается history
@@ -123,10 +119,10 @@ History = неизменяемый log бизнес-событий и испол
 
 ## 9) Retention policy (MVP baseline)
 
-- `history_events`: 180 дней (по умолчанию), далее агрегировать/архивировать.
-- `scheduler_occurrences`: 90 дней.
-- `notification_delivery_log`: 90 дней.
-- Очистка выполняется фоновым maintenance-job не чаще 1 раза в сутки.
+- Автоматическая очистка history в MVP не выполняется.
+- История таймеров управляется пользователем вручную через UI (stack history + удаление по кнопке).
+- Удаление history timer entries: hard-delete.
+- Retention SLA не задаётся: пользователь сам решает, что хранить и что удалять.
 
 ## 10) Версия схемы и миграции
 
@@ -137,7 +133,11 @@ History = неизменяемый log бизнес-событий и испол
   2. destructive changes — только через двухшаговую deprecation схему.
   3. Документ обновляется в одном PR с миграцией.
 
-## 11) Open questions
+## 11) Решённые допущения MVP
 
-- Нужна ли отдельная таблица archival snapshots для completed timer sessions в MVP?
-- Какой фактический retention SLA требуется пользователю: 90/180 дней или настраиваемый?
+- Отдельная таблица archival snapshots для completed timer sessions не нужна.
+- Retention SLA для history не требуется; управление хранением полностью на стороне пользователя.
+
+## 12) Open questions
+
+- Нужна ли отдельная materialized read-модель для "часто используемых таймеров" (derived из history) или достаточно runtime-агрегации?

@@ -16,33 +16,33 @@ Canonical: docs/implementation/development-view.md
 ## 2) Предлагаемая структура папок
 
 ```text
-src/
-  core/
-    domain/
-      timer/
-      pomodoro/
-      reminder/
-      shared/
-  application/
-    use-cases/
-      commands/
-      queries/
-    ports/
-  adapters/
-    primary/
-      ui/
-      cli/                 # future
-    secondary/
-      sqlite/
-      notifications/
-      clock/
-  infra/
-    scheduler/
-      loop/
-      reconcile/
-    bootstrap/
-      wiring/
-      config/
+src/                                  # корень runtime-кода
+  core/                               # доменная модель и инварианты
+    domain/                           # bounded contexts предметной области
+      timer/                          # кастомные таймеры
+      pomodoro/                       # помодоро-сессии и циклы
+      reminder/                       # правила/состояния напоминаний
+      shared/                         # общие value objects и primitives
+  application/                        # use-cases и orchestration
+    use-cases/                        # сценарии приложения
+      commands/                       # mutating операции (write side)
+      queries/                        # read-only операции (read side)
+    ports/                            # интерфейсы для adapters (in/out)
+  adapters/                           # интеграции с внешним миром
+    primary/                          # входные интерфейсы (UI/CLI)
+      ui/                             # desktop UI adapter
+      cli/                            # future CLI adapter
+    secondary/                        # выходные интерфейсы (DB/OS/services)
+      sqlite/                         # persistence adapter
+      notifications/                  # OS notifications adapter
+      clock/                          # system clock adapter
+  infra/                              # runtime-платформа и bootstrap
+    scheduler/                        # движок планирования
+      loop/                           # основной event/tick loop
+      reconcile/                      # алгоритмы reconcile/misfire
+    bootstrap/                        # запуск приложения
+      wiring/                         # composition root / DI wiring
+      config/                         # загрузка и валидация конфигурации
 ```
 
 ## 3) Ответственность слоёв
@@ -114,7 +114,7 @@ src/
 5. Обновлены соответствующие документы (`implementation/*`, `testing/*`, при необходимости ADR).
 6. Добавлен пункт в release notes / changelog (если влияет на пользовательское поведение).
 
-## 11) Open questions
+## 11) Решение по структуре MVP
 
-- Нужна ли отдельная директория `read-models` для query-оптимизации в MVP или достаточно query use-cases?
-- Нужен ли feature-sliced вариант структуры для UI-адаптера уже в MVP?
+- Отдельная директория `read-models` в MVP не вводится; достаточно `application/use-cases/queries` и SQL/read-запросов в persistence adapter.
+- Feature-sliced структура для UI в MVP не обязательна; используем простой adapter-first layout и вернёмся к рефакторингу по мере роста UI.

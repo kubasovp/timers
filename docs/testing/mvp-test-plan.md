@@ -20,7 +20,7 @@ Canonical: docs/testing/mvp-test-plan.md
 
 1. Корректные сообщения деградации UI при временном сбое adapters.
 2. Базовые метрики и логи scheduler доступны и читаемы.
-3. Retention cleanup job отрабатывает без влияния на активные сценарии.
+3. CI-прогон проходит на Linux и Windows.
 
 ## 2) Non-functional smoke checks
 
@@ -50,7 +50,7 @@ MVP готов к релиз-кандидату, если:
 2. Нет open blocker в traceability по контрактам.
 3. Нет high-severity дефектов по crash/recovery/time semantics.
 
-## 6) Open questions
+## 6) Решения для MVP
 
-- Какие платформы обязательны в CI для MVP: Linux only или Linux+Windows?
-- Нужен ли nightly longevity smoke (например, 8-часовой прогон scheduler)?
+- Обязательные платформы CI: Linux + Windows.
+- Nightly longevity smoke (долгий прогон scheduler) в MVP не обязателен.
