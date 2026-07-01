@@ -2,18 +2,18 @@
 
 Status: Draft  
 Owner: github.com/kubasovp  
-Last reviewed (UTC): 2026-05-06  
+Last reviewed (UTC): 2026-07-01
 Scope: Функциональные блоки и правила доменной логики времени  
 Canonical: docs/02-functional-overview.md
 
 ## 2.1 Функциональные блоки
 
-### A. Pomodoro
+### A. Фокус
 - Профили (create/update/delete, дефолтный профиль).
-- Запуск и управление сессией (pause/resume/stop/skip).
+- Запуск и управление фокус-сессией (pause/resume/stop/skip).
 - Уведомление о завершении этапа, автопереход между этапами.
 - `skip` фиксируется как отдельный статус этапа (не `completed`).
-- Одновременно активна только одна pomodoro-сессия.
+- Одновременно активна только одна фокус-сессия.
 
 ### B. Кастомные таймеры
 - Быстрый запуск по длительности (hh:mm:ss).
@@ -38,6 +38,7 @@ Canonical: docs/02-functional-overview.md
 - Разное поведение `X` по платформам.
 - Трей (Windows/macOS), Linux-ограничения в MVP.
 - Выход при активных сущностях: предупреждение + явное подтверждение.
+- Панели Focus/Timers/Reminders можно скрывать в UI; скрытие панели не отключает уже созданные таймеры или напоминания.
 
 ## 2.2 Системные правила времени (ядро домена)
 
@@ -50,21 +51,21 @@ Canonical: docs/02-functional-overview.md
   3. сформировать список пропущенных напоминаний;
   4. сдвинуть `nextAt` для повторяющихся правил.
 
-## 2.4 Правила state machine и обработки команд
+## 2.3 Правила state machine и обработки команд
 
-- Для Pomodoro, Custom Timer, Reminder поддерживается формализация через таблицу переходов + диаграмму состояний.
+- Для Focus, Custom Timer, Reminder поддерживается формализация через таблицу переходов + диаграмму состояний.
 - Некорректная команда для текущего состояния возвращает доменную ошибку.
 - В UI такая ошибка отображается как нейтральное пользовательское уведомление (без технических деталей).
 
 Canonical state machine artifacts:
-- `docs/state-machines/pomodoro.md`
+- `docs/state-machines/focus-session.md`
 - `docs/state-machines/custom-timer.md`
 - `docs/state-machines/reminder.md`
 
-## 2.3 Минимальная модель данных
+## 2.4 Минимальная модель данных
 
-- `pomodoro_profiles`
-- `sessions` (pomodoro/custom)
+- `focus_profiles`
+- `sessions` (focus/custom)
 - `timer_presets`
 - `reminders`
 - `reminder_occurrences` (история хранится полностью; пользователь может удалять записи вручную)

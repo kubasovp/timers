@@ -41,7 +41,7 @@
 
 Каноничные артефакты состояний и переходов доменных сущностей.
 
-- `state-machines/pomodoro.md`
+- `state-machines/focus-session.md`
 - `state-machines/custom-timer.md`
 - `state-machines/reminder.md`
 

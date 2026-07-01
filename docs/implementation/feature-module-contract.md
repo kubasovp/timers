@@ -15,15 +15,15 @@ Timers использует **plugin-first modular monolith**.
 Цель:
 - минимальное ядро приложения;
 - независимые бизнес-модули;
-- предсказуемое подключение/отключение функциональности;
+- предсказуемое подключение функциональности;
 - отсутствие прямых скрытых зависимостей между модулями.
 
 ## 2) Термины
 
-- **Kernel** — минимальное ядро приложения: контракты, registry, command/query dispatch, scheduler registry, navigation registry. Не содержит бизнес-логики Pomodoro/Timer/Reminder.
+- **Kernel** — минимальное ядро приложения: контракты, registry, command/query dispatch, scheduler registry, navigation registry. Не содержит бизнес-логики Focus/Timer/Reminder.
 - **Feature module** — вертикальный бизнес-модуль: domain + use-cases + UI + persistence bindings + scheduler bindings.
 - **Platform adapter** — конкретная интеграция с внешней средой: Tauri, SQLite, OS notifications, clock, filesystem.
-- **Composition root** — единственное место, где приложение выбирает активные модули и связывает kernel, platform adapters и features.
+- **Composition root** — единственное место, где приложение выбирает статический набор модулей и связывает kernel, platform adapters и features.
 
 ## 3) Базовый контракт модуля
 
@@ -109,7 +109,7 @@ src/features/custom-timer/
   ports.ts                  # interfaces, нужные модулю извне
 
   ui/                       # Vue pages/components/composables модуля
-  persistence/              # SQLite mapping/repository implementation
+  persistence/              # repository implementation через storage contracts
   scheduler/                # scheduler source/reconcile integration
   migrations/               # versioned DB migrations модуля
 
@@ -127,7 +127,7 @@ src/features/custom-timer/
 - `feature/* -> kernel contracts`;
 - `feature/* -> shared primitives`;
 - `feature/ui -> Vue`;
-- `feature/persistence -> SQLite adapter contracts`;
+- `feature/persistence -> kernel/storage contracts`;
 - `platform/bootstrap -> features`;
 - `platform/* -> kernel contracts`.
 
@@ -136,6 +136,7 @@ src/features/custom-timer/
 - `feature/domain -> Vue|Tauri|SQLite`;
 - `feature/use-cases -> Vue|Tauri`;
 - `feature A -> feature B/internal/*`;
+- `feature/persistence -> concrete platform/sqlite implementation`;
 - `platform adapter -> feature internal domain`, кроме composition root/wiring.
 
 Если одному модулю нужен другой модуль, используются варианты по приоритету:
@@ -144,38 +145,35 @@ src/features/custom-timer/
 2. Command/query registry.
 3. Domain event только для побочных реакций: history, metrics, logs.
 
-## 8) Включение и отключение модулей
+## 8) Регистрация модулей и видимость UI
 
-В MVP список модулей статичен:
+В MVP список бизнес-модулей статичен:
 
 ```ts
-const enabledFeatures = [
+const appFeatures = [
   customTimerFeature,
-  pomodoroFeature,
+  focusFeature,
   remindersFeature,
 ];
 
-for (const feature of enabledFeatures) {
+for (const feature of appFeatures) {
   feature.register(registrationContext);
 }
 ```
 
-Post-MVP возможна настройка:
+Пользовательская настройка "отключить модуль" в MVP означает скрыть его панель/пункт навигации, а не выгрузить бизнес-модуль:
 
 ```ts
-const enabledFeatures = allFeatures.filter((feature) => {
-  return userSettings.enabledFeatures.includes(feature.id);
-});
+const visiblePanels = userSettings.visiblePanels;
 ```
 
-Отключение модуля означает:
-- routes/navigation/commands/scheduler sources не регистрируются;
-- пользовательские данные модуля в SQLite не удаляются автоматически;
-- миграции уже установленных модулей не откатываются автоматически.
+Скрытый модуль остаётся зарегистрированным, если его scheduler sources/commands/queries нужны для корректной работы уже созданных пользовательских данных. Например, скрытая панель reminders не должна отключать срабатывание существующих напоминаний.
+
+Post-MVP можно вернуться к настоящему runtime-отключению модулей, но только после отдельного решения о scheduler behavior, миграциях, хранении данных и recovery.
 
 ## 9) Scheduler integration
 
-Scheduler не знает бизнес-смысл Pomodoro/Timer/Reminder. Он работает с зарегистрированными источниками:
+Scheduler не знает бизнес-смысл Focus/Timer/Reminder. Он работает с зарегистрированными источниками:
 
 ```ts
 export interface SchedulerSource {
@@ -232,12 +230,12 @@ MVP включает три бизнес-модуля:
 
 ```text
 features/custom-timer
-features/pomodoro
+features/focus
 features/reminders
 ```
 
 Рекомендуемый порядок реализации:
 
 1. `custom-timer` — самый простой модуль, хороший первый вертикальный срез.
-2. `pomodoro` — похож на timer, но со своей state machine и профилями.
+2. `focus` — похож на timer, но со своей state machine и профилями.
 3. `reminders` — самый сложный модуль из-за repeat rules, snooze, missed events, DST/timezone и очереди уведомлений.

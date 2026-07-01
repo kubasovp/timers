@@ -2,7 +2,7 @@
 
 Status: Draft  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-05-08  
+Last updated (UTC): 2026-07-01
 Scope: Acceptance gates для MVP реализации  
 Canonical: docs/testing/mvp-test-plan.md
 
@@ -10,7 +10,7 @@ Canonical: docs/testing/mvp-test-plan.md
 
 ### P0 (must pass)
 
-1. Таймеры и помодоро корректно стартуют/пауза/резюм/стоп.
+1. Таймеры и фокус-сессии корректно стартуют/пауза/резюм/стоп.
 2. Reminder one-time/daily/interval срабатывает по контракту времени.
 3. После restart/sleep выполняется reconcile без потери активного состояния.
 4. Misfire и dedup работают: нет дублей уведомлений.
@@ -35,7 +35,7 @@ Canonical: docs/testing/mvp-test-plan.md
 | `implementation/scheduler-contract.md` | unit: misfire/retry/dedup; integration: crash-restart reconcile |
 | `implementation/data-model-v1.md` | migration tests; repository contract tests; uniqueness/idempotency tests |
 | `implementation/platform-lifecycle.md` | startup ordering test; graceful shutdown test; readiness gating test |
-| `state-machines/*.md` | transition tests для pomodoro/custom/reminder |
+| `state-machines/*.md` | transition tests для focus/custom/reminder |
 
 ## 4) Минимальный набор тестовых уровней
 

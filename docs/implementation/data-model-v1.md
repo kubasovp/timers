@@ -2,7 +2,7 @@
 
 Status: Draft (logical schema baseline)  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-05-08  
+Last updated (UTC): 2026-07-01
 Scope: Логическая модель данных MVP + правила эволюции  
 Canonical: docs/implementation/data-model-v1.md
 
@@ -18,17 +18,17 @@ Canonical: docs/implementation/data-model-v1.md
 
 1. `active_timer_sessions`
 - `id` (PK)
-- `session_type` (`pomodoro` | `custom_timer`)
-- `status` (`running` | `paused` | `completed` | `stopped` | `skipped` | `running_work` | `running_break` | `paused_work` | `paused_break`)
+- `session_type` (`focus` | `custom_timer`)
+- `status` (`running` | `paused` | `completed` | `stopped` | `skipped` | `running_focus` | `running_break` | `paused_focus` | `paused_break`)
 - `started_at_utc`, `ends_at_utc`, `paused_at_utc` nullable
 - `duration_total_sec`
 - `input_hours`, `input_minutes`, `input_seconds` (пользовательский формат ввода для custom timer)
-- `profile_id` nullable (для pomodoro)
+- `profile_id` nullable (для focus)
 - `version` (optimistic concurrency)
 
 `status` должен сохраняться без потерь относительно canonical state machines:
 - custom timer: `running`/`paused`/`completed`/`stopped`;
-- pomodoro: `running_work`/`running_break`/`paused_work`/`paused_break`/`completed`/`stopped`/`skipped`.
+- focus: `running_focus`/`running_break`/`paused_focus`/`paused_break`/`completed`/`stopped`/`skipped`.
 
 2. `active_reminders`
 - `id` (PK)
@@ -42,10 +42,10 @@ Canonical: docs/implementation/data-model-v1.md
 
 ### B. Presets/templates
 
-3. `pomodoro_profiles`
+3. `focus_profiles`
 - `id` (PK)
 - `name` (unique)
-- `work_duration_sec`, `short_break_sec`, `long_break_sec`
+- `focus_duration_sec`, `short_break_sec`, `long_break_sec`
 - `cycles_before_long_break`
 - `created_at_utc`, `updated_at_utc`
 
@@ -82,7 +82,7 @@ Canonical: docs/implementation/data-model-v1.md
 
 ## 3) Связи
 
-- `active_timer_sessions.profile_id -> pomodoro_profiles.id` (nullable FK).
+- `active_timer_sessions.profile_id -> focus_profiles.id` (nullable FK).
 - `notification_delivery_log.occurrence_id -> scheduler_occurrences.id`.
 - Логические связи `scheduler_occurrences.source_id` к `active_*` (или архивным) сущностям валидируются приложением.
 
@@ -97,14 +97,14 @@ Canonical: docs/implementation/data-model-v1.md
 ## 5) Enum-статусы
 
 Статусы и их допустимые переходы должны соответствовать state-machine документам:
-- `docs/state-machines/pomodoro.md`
+- `docs/state-machines/focus-session.md`
 - `docs/state-machines/custom-timer.md`
 - `docs/state-machines/reminder.md`
 
 ## 6) Правила удаления
 
 - Active records: soft-delete предпочтителен для reminders (`is_enabled=false`) в MVP.
-- Pomodoro profiles: hard-delete разрешён, если нет активной зависимости.
+- Focus profiles: hard-delete разрешён, если нет активной зависимости.
 - History/occurrences: не удаляются синхронно с бизнес-удалением активной сущности.
 
 ## 7) Что считается history
@@ -132,6 +132,8 @@ History = неизменяемый log бизнес-событий и испол
 
 - Текущая версия: `schema_v1`.
 - Любое изменение структуры БД требует versioned migration (`v1.1`, `v1.2`, ...).
+- Feature-модули владеют своими migrations (`src/features/<feature-id>/migrations/`), но выполняет их централизованный platform migrations runner.
+- Общие системные таблицы (`app_settings`, migration metadata) принадлежат platform storage layer.
 - Правила эволюции:
   1. Миграции должны быть backward-safe в пределах минорной версии.
   2. destructive changes — только через двухшаговую deprecation схему.

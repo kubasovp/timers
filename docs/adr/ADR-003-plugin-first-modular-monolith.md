@@ -9,7 +9,7 @@ Canonical: docs/adr/ADR-003-plugin-first-modular-monolith.md
 
 Timers — локальное desktop-приложение для коротких временных сценариев:
 
-- Pomodoro;
+- Focus sessions;
 - custom timers;
 - reminders.
 
@@ -34,7 +34,7 @@ Timers — локальное desktop-приложение для коротки
 
 ```text
 src/kernel      # feature contract, registries, command/query/scheduler contracts
-src/features    # custom-timer, pomodoro, reminders
+src/features    # custom-timer, focus, reminders
 src/platform    # Tauri, SQLite, notifications, clock, scheduler loop, bootstrap
 src/shared      # domain-neutral primitives/utilities
 ```
@@ -65,7 +65,7 @@ src/infra
 
 Минусы:
 - бизнес-модуль размазывается по слоям;
-- Pomodoro/Timer/Reminder сложнее отключать и развивать независимо;
+- Focus/Timer/Reminder сложнее развивать независимо;
 - выше риск скрытого монолита через общий application/core слой;
 - хуже соответствует цели “ядро + подключаемые модули”.
 
@@ -101,11 +101,13 @@ src/infra
 
 ### Positive
 
-- Pomodoro, Custom Timer и Reminders становятся самостоятельными вертикальными модулями.
+- Focus, Custom Timer и Reminders становятся самостоятельными вертикальными модулями.
 - Новый модуль добавляется через один понятный contract.
 - Scheduler работает через registered scheduler sources и не знает бизнес-деталей модулей.
 - UI shell рендерит зарегистрированные routes/navigation и вызывает commands/queries.
 - Composition root явно показывает, какие модули включены.
+- Пользовательское скрытие панели в MVP остаётся UI-настройкой, а не runtime-отключением бизнес-модуля.
+- Бизнес-логика живёт в TypeScript feature-модулях; Tauri/Rust используются как platform adapters.
 
 ### Negative / risks
 
@@ -120,13 +122,11 @@ src/infra
 2. Feature-модули не импортируют внутренности других feature-модулей.
 3. `domain` и `use-cases` feature-модуля не зависят от Vue/Tauri.
 4. Platform adapters не содержат бизнес-правила времени.
-5. Composition root — единственное место, где выбирается список активных feature-модулей.
+5. Composition root — единственное место, где выбирается статический список feature-модулей.
 6. Event bus используется только для observability/history/metrics, не как основной бизнес-механизм.
+7. В MVP не проектируется отдельный background service/daemon; уведомления работают пока app process запущен, пропущенные события восстанавливаются через reconcile при следующем запуске.
 
 ## Follow-ups
 
-- Обновить C4 container diagram под `kernel/features/platform`.
-- Обновить development view под feature-first layout.
-- Добавить `feature-module-contract.md`.
-- Позже синхронизировать `data-model-v1.md` с feature-owned migrations.
-- Позже добавить dependency-cruiser/ESLint boundaries.
+- Добавить dependency-cruiser/ESLint boundaries.
+- После первого вертикального среза проверить, не распухает ли `kernel`.

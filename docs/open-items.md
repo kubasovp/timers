@@ -33,7 +33,7 @@ Canonical: docs/open-items.md
 - ADR-002 timezone/DST: `docs/adr/ADR-002-time-semantics-for-reminders.md`
 - ADR-003 plugin-first modular monolith: `docs/adr/ADR-003-plugin-first-modular-monolith.md`
 - State machines:
-  - `docs/state-machines/pomodoro.md`
+  - `docs/state-machines/focus-session.md`
   - `docs/state-machines/custom-timer.md`
   - `docs/state-machines/reminder.md`
 
@@ -46,7 +46,6 @@ Canonical: docs/open-items.md
 
 Следующие вопросы не блокируют старт MVP, но требуют отдельной фиксации по мере реализации:
 
-- Синхронизировать `data-model-v1.md` с feature-owned migrations.
 - Выбрать инструмент для architecture boundary checks: dependency-cruiser или ESLint boundaries.
 - Решить, нужны ли materialized read models для часто используемых таймеров или достаточно runtime-агрегации из history.
 

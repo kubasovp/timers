@@ -82,7 +82,7 @@ button[disabled] {
   border-radius: 6px;
 }
 
-.pomodoro-timer {
+.focus-timer {
   font-size: 32px;
   font-weight: bold;
 }

@@ -12,7 +12,7 @@ Canonical: docs/implementation/development-view.md
 
 - приложение не превратилось в запутанный монолит;
 - бизнес-функции подключались предсказуемо;
-- Pomodoro, Custom Timer и Reminders не мешали друг другу;
+- Focus, Custom Timer и Reminders не мешали друг другу;
 - ядро оставалось минимальным и не знало бизнес-деталей;
 - каждый новый модуль добавлялся через один понятный контракт.
 
@@ -31,6 +31,7 @@ src/
     registries/                        # command/query/route/navigation/scheduler/settings registries
     commands/                          # command bus contracts and result types
     scheduler/                         # scheduler source/action contracts
+    storage/                           # storage/database contracts, без SQLite details
     errors/                            # app-level errors without business details
 
   platform/                            # конкретные desktop/OS/storage интеграции
@@ -55,7 +56,7 @@ src/
       migrations/
       tests/
 
-    pomodoro/
+    focus/
       index.ts
       manifest.ts
       domain/
@@ -108,7 +109,7 @@ feature/scheduler -> feature/use-cases|feature/domain
 - общие интерфейсы scheduler source/action.
 
 Не отвечает за:
-- Pomodoro-логику;
+- Focus-логику;
 - custom timer-логику;
 - reminder-логику;
 - SQLite-запросы;
@@ -142,6 +143,8 @@ feature/scheduler -> feature/use-cases|feature/domain
 - scheduler loop;
 - composition root.
 
+Tauri/Rust часть в MVP остаётся platform boundary. Бизнес-логика времени, state machines и use-cases живут в TypeScript feature-модулях.
+
 ### `shared`
 
 Только доменно-нейтральные вещи:
@@ -160,23 +163,29 @@ Composition root живёт в:
 src/platform/bootstrap/
 ```
 
-Только здесь приложение выбирает активные feature-модули и передаёт им registration context.
+Только здесь приложение выбирает статический набор feature-модулей и передаёт им registration context.
 
 ```ts
-const enabledFeatures = [
+const appFeatures = [
   customTimerFeature,
-  pomodoroFeature,
+  focusFeature,
   remindersFeature,
 ];
 
-for (const feature of enabledFeatures) {
+for (const feature of appFeatures) {
   feature.register(featureRegistrationContext);
 }
 ```
 
-В MVP список активных модулей статичен. Post-MVP можно добавить user settings для включения/отключения модулей.
+В MVP список активных бизнес-модулей статичен. Пользовательская настройка "отключить модуль" реализуется как UI-настройка видимости панели/навигации:
 
-Отключение модуля означает, что его routes/navigation/commands/queries/scheduler sources не регистрируются. Данные в SQLite автоматически не удаляются.
+```ts
+const visiblePanels = userSettings.visiblePanels;
+```
+
+Скрытие панели не выгружает модуль и не отключает его scheduler sources. Например, скрытая панель reminders не должна отключать уже созданные напоминания.
+
+Настоящее runtime-отключение feature-модулей откладывается до post-MVP и требует отдельного решения по scheduler behavior, миграциям, данным и recovery.
 
 ## 5) Разрешённые направления импортов
 
@@ -185,10 +194,11 @@ for (const feature of enabledFeatures) {
 ```text
 platform/bootstrap -> features/*
 platform/* -> kernel/*
+platform/sqlite -> kernel/storage contracts
 features/* -> kernel/*
 features/* -> shared/*
 features/<id>/ui -> Vue
-features/<id>/persistence -> platform/sqlite contracts
+features/<id>/persistence -> kernel/storage contracts
 features/<id>/scheduler -> kernel/scheduler contracts
 ```
 
@@ -208,6 +218,7 @@ kernel -> platform/*
 kernel -> Vue|Tauri|SQLite
 features/<id>/domain -> Vue|Tauri|SQLite
 features/<id>/use-cases -> Vue|Tauri
+features/<id>/persistence -> concrete platform/sqlite implementation
 features/A -> features/B/internal/*
 platform/scheduler-loop -> features/*/ui
 ```
@@ -256,6 +267,8 @@ import type { ReminderId } from '@/features/reminders';
 
 Event bus не является основным способом бизнес-взаимодействия в MVP.
 
+Если post-MVP появится общий обзор всех сценариев, он должен быть отдельным feature-модулем (`features/overview`) и читать данные через публичные queries/contracts, не импортируя внутренности Focus/Timer/Reminder.
+
 ## 8) Scheduler loop
 
 Scheduler loop живёт в:
@@ -264,7 +277,7 @@ Scheduler loop живёт в:
 src/platform/scheduler-loop/
 ```
 
-Scheduler loop не знает бизнес-деталей Pomodoro/Timer/Reminder. Он работает с `SchedulerSource`, зарегистрированными модулями:
+Scheduler loop не знает бизнес-деталей Focus/Timer/Reminder. Он работает с `SchedulerSource`, зарегистрированными модулями:
 
 ```ts
 export interface SchedulerSource {
@@ -293,7 +306,7 @@ Use-cases живут внутри конкретного feature-модуля:
 
 ```text
 src/features/custom-timer/use-cases/startTimer.ts
-src/features/pomodoro/use-cases/startPomodoroSession.ts
+src/features/focus/use-cases/startFocusSession.ts
 src/features/reminders/use-cases/createReminder.ts
 ```
 
@@ -301,7 +314,7 @@ src/features/reminders/use-cases/createReminder.ts
 
 ```ts
 context.commands.add('timer.start', startTimer);
-context.commands.add('pomodoro.start', startPomodoroSession);
+context.commands.add('focus.start', startFocusSession);
 context.commands.add('reminder.create', createReminder);
 ```
 
@@ -313,7 +326,7 @@ context.commands.add('reminder.create', createReminder);
 
 ```text
 src/features/custom-timer/migrations/
-src/features/pomodoro/migrations/
+src/features/focus/migrations/
 src/features/reminders/migrations/
 ```
 
@@ -323,7 +336,7 @@ src/features/reminders/migrations/
 context.migrations.add(customTimerMigrations);
 ```
 
-Это позволяет отключать UI/commands модуля без автоматического удаления пользовательских данных.
+Это позволяет скрывать UI модуля без автоматического удаления пользовательских данных.
 
 ## 11) UI structure
 
@@ -333,7 +346,7 @@ Feature UI живёт внутри модуля:
 
 ```text
 src/features/custom-timer/ui/
-src/features/pomodoro/ui/
+src/features/focus/ui/
 src/features/reminders/ui/
 ```
 
@@ -381,14 +394,14 @@ MVP реализуется как три feature-модуля:
 
 ```text
 features/custom-timer
-features/pomodoro
+features/focus
 features/reminders
 ```
 
 Рекомендуемый порядок реализации:
 
 1. `custom-timer` — первый вертикальный срез и проверка feature contract.
-2. `pomodoro` — второй модуль с отдельной state machine и профилями.
+2. `focus` — второй модуль с отдельной state machine и профилями.
 3. `reminders` — самый сложный модуль из-за повторов, snooze, missed events, DST/timezone и очереди уведомлений.
 
 Отдельная глобальная структура `core/application/adapters` в MVP не используется как главный layout. Чистые зависимости сохраняются внутри каждого feature-модуля и через `kernel/platform` boundary.

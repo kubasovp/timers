@@ -12,9 +12,10 @@ flowchart TB
 
   SHELL[Desktop App Shell\nTauri + Vue]
   KERNEL[App Kernel\nfeature contract + registries]
+  BOOT[Composition Root\nplatform/bootstrap]
 
   CUSTOM[Feature Module\nCustom Timer]
-  POM[Feature Module\nPomodoro]
+  FOCUS[Feature Module\nFocus]
   REM[Feature Module\nReminders]
 
   PLATFORM[Platform Adapters\nTauri bridge + SQLite + notifications + clock]
@@ -28,16 +29,20 @@ flowchart TB
   USER --> SHELL
 
   SHELL --> KERNEL
-  KERNEL --> CUSTOM
-  KERNEL --> POM
-  KERNEL --> REM
+
+  BOOT --> KERNEL
+  BOOT --> PLATFORM
+  BOOT --> CUSTOM
+  BOOT --> FOCUS
+  BOOT --> REM
 
   CUSTOM --> KERNEL
-  POM --> KERNEL
+  FOCUS --> KERNEL
   REM --> KERNEL
 
   SCHED --> KERNEL
-  KERNEL --> PLATFORM
+  SCHED --> PLATFORM
+  PLATFORM --> KERNEL
   PLATFORM --> DB
   PLATFORM --> NOTIF
 
@@ -48,9 +53,10 @@ flowchart TB
 ### Пояснения к контейнерам
 
 - `Desktop App Shell` — desktop UI и Tauri WebView. Shell рендерит зарегистрированные routes/navigation и вызывает commands/queries через kernel.
-- `App Kernel` — минимальное ядро: feature contract, registries, command/query contracts, scheduler contracts. Kernel не содержит бизнес-логики Pomodoro/Timer/Reminder.
+- `App Kernel` — минимальное ядро: feature contract, registries, command/query contracts, scheduler contracts. Kernel не содержит бизнес-логики Focus/Timer/Reminder.
+- `Composition Root` — bootstrap/wiring: выбирает статический набор feature-модулей, создаёт registration context и связывает kernel с platform adapters.
 - `Feature Module: Custom Timer` — быстрые таймеры, пресеты, active custom timer sessions.
-- `Feature Module: Pomodoro` — Pomodoro profiles, work/break cycles, Pomodoro session state machine.
+- `Feature Module: Focus` — focus profiles, focus/break cycles, focus session state machine.
 - `Feature Module: Reminders` — one-time/daily/interval reminders, snooze, missed events, reminder state machine.
 - `Platform Adapters` — конкретные интеграции с Tauri, SQLite, OS notifications, clock и runtime config.
 - `Scheduler Loop` — общий loop, который работает с зарегистрированными scheduler sources. Scheduler не знает бизнес-деталей модулей.
@@ -58,6 +64,8 @@ flowchart TB
 
 ### Архитектурное правило
 
-Feature-модули подключаются к приложению через `AppFeature.register(context)`. Они не импортируют внутренности друг друга и не зависят напрямую от platform adapters.
+Feature-модули подключаются к приложению через `AppFeature.register(context)`. Они не импортируют внутренности друг друга и не зависят напрямую от concrete platform adapters.
 
-Composition root находится в `platform/bootstrap` и является единственным местом, где выбирается список активных feature-модулей.
+Kernel не импортирует feature-модули и platform adapters. Platform/bootstrap — единственное место, где выбирается статический набор feature-модулей.
+
+Feature persistence зависит от storage contracts; `platform/sqlite` реализует эти contracts и инжектится через composition root.

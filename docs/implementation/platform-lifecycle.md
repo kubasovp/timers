@@ -2,13 +2,13 @@
 
 Status: Draft (runtime/platform contract)  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-05-08  
+Last updated (UTC): 2026-07-01
 Scope: Startup/Shutdown/Recovery semantics  
 Canonical: docs/implementation/platform-lifecycle.md
 
 ## 1) Startup order
 
-1. Загрузка конфигурации и feature flags.
+1. Загрузка конфигурации и настроек видимости UI-панелей.
 2. Инициализация storage (SQLite), проверка/применение миграций.
 3. Инициализация adapters (clock, notifications, optional telemetry/update).
 4. Wiring application services (composition root).
@@ -48,3 +48,4 @@ Canonical: docs/implementation/platform-lifecycle.md
 
 - Режим `degraded-readonly` при повреждённой БД не вводится в MVP (избыточно для текущего scope).
 - Явный user-visible recovery report после crash не вводится в MVP; достаточно внутреннего лога восстановления.
+- Отдельный background service/daemon не вводится. Уведомления работают пока app process запущен; после полного закрытия пропущенные события восстанавливаются на следующем старте через reconcile.

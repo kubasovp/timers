@@ -14,75 +14,23 @@ Canonical: docs/03-quality-and-constraints.md
 - MVP: offline-first по умолчанию (default), без обязательного внешнего backend для базовых сценариев.
 - При доступной сети могут включаться online-функции (проверка обновлений, агрегированная телеметрия), но их отказ не влияет на базовые локальные сценарии.
 
-## 3.1.1 Архитектурные принципы для расширяемости
+## 3.1.1 Архитектурный baseline
 
-Timers использует **plugin-first modular monolith**:
+Timers использует **plugin-first modular monolith**. Этот документ не дублирует dependency rules; каноничные правила живут в:
 
-- `kernel` — минимальное ядро приложения: контракты, registry, command/query dispatch, scheduler registry, navigation registry;
-- `features/*` — вертикальные бизнес-модули: Custom Timer, Pomodoro, Reminders;
-- `platform` — конкретные desktop/OS/storage интеграции: Tauri, SQLite, notifications, clock, scheduler loop;
-- `shared` — доменно-нейтральные primitives/utilities.
-
-Базовые правила:
-
-- UI не содержит бизнес-логики времени; UI вызывает commands/queries зарегистрированных feature-модулей.
-- Бизнес-логика времени живёт внутри соответствующего feature-модуля.
-- `kernel` не знает бизнес-деталей Pomodoro/Timer/Reminder.
-- `kernel` не зависит от Vue/Tauri/SQLite.
-- Feature-модули не импортируют внутренние файлы друг друга.
-- SQLite — единый источник истины для persisted state таймеров/напоминаний/настроек.
-- Любой новый интерфейс (GUI/CLI/daemon) работает через тот же command/query/scheduler contract.
-
-### Development view (MVP baseline)
-
-Модульные границы (обязательные):
-
-- `kernel` — feature contract, registries, command/query contracts, scheduler contracts, общие app-level errors;
-- `features/custom-timer` — быстрые таймеры, пресеты, active custom timer sessions;
-- `features/pomodoro` — Pomodoro profiles, Pomodoro sessions, work/break transitions;
-- `features/reminders` — one-time/daily/interval reminders, snooze, done/delete, missed events;
-- `platform` — Tauri, SQLite, OS notifications, clock, migrations runner, scheduler loop, composition root;
-- `shared` — нейтральные primitives: time/result/validation.
-
-Dependency rule (обязательный):
-
-- допускаются зависимости `features -> kernel/shared`;
-- допускаются зависимости `platform -> kernel`;
-- `platform/bootstrap` может импортировать feature-модули для composition root;
-- `kernel` не импортирует `features`, `platform`, Vue, Tauri, SQLite;
-- feature-модули не импортируют внутренние пути других feature-модулей;
-- domain/use-case код feature-модулей не зависит от Vue/Tauri.
-
-Контроль правила зависимостей:
-
-- линтер/архитектурный тест в CI проверяет запрет обратных и межмодульных импортов;
-- public entrypoint каждого feature-модуля: `src/features/<feature-id>/index.ts`.
-
-Минимальный обязательный набор use-case команд:
-
-- `timer.start`
-- `timer.pause`
-- `reminder.create`
-- `reminder.list`
-
-Анти-паттерн (не допускается):
-
-```text
-Vue component -> считает время -> пишет в local state/SQLite
-```
-
-Целевой поток:
-
-```text
-Vue component -> command/query -> feature use-case -> feature domain -> persistence port
-```
-
-Каноничные implementation-документы:
-
+- `docs/adr/ADR-003-plugin-first-modular-monolith.md`
 - `docs/implementation/development-view.md`
 - `docs/implementation/feature-module-contract.md`
 - `docs/implementation/scheduler-contract.md`
 - `docs/implementation/data-model-v1.md`
+
+MVP-решения:
+
+- бизнес-логика времени, state machines и use-cases живут в TypeScript feature-модулях;
+- Tauri/Rust используются как platform adapters: window/tray, notifications, filesystem/SQLite bridge;
+- пользовательское "отключение модуля" означает скрытие панели/навигации, а не runtime-выгрузку feature-модуля;
+- отдельный background service/daemon в MVP не проектируется;
+- внешний plugin marketplace/dynamic loading в MVP не проектируются.
 
 ## 3.1.2 Версионирование, миграции и релизный контур (MVP-ready)
 
@@ -123,8 +71,8 @@ Vue component -> command/query -> feature use-case -> feature domain -> persiste
 ### Поддерживаемость
 
 - Явная доменная модель времени внутри feature-модулей.
-- Трассируемость требований (ID F-POM/F-TMR/F-REM/F-WIN).
-- Явные feature/module boundaries, позволяющие подключить CLI и daemon без переписывания бизнес-логики.
+- Трассируемость требований через functional overview, state machines и MVP test plan.
+- Явные feature/module boundaries, позволяющие позже подключить новый интерфейс без переписывания бизнес-логики.
 - Минимальное kernel API без бизнес-деталей.
 
 ### Проверяемость (MVP quality gates)
@@ -190,4 +138,4 @@ Vue component -> command/query -> feature use-case -> feature domain -> persiste
 - **Physical view:** платформенные различия зафиксированы.
 - **Scenarios (+1):** ключевые use cases перечислены.
 
-Вывод: для полноценной 4+1-покрытости следующим шагом нужно синхронизировать data model и state-machine документы с feature-first layout.
+Вывод: для полноценной 4+1-покрытости следующим шагом нужно добавить архитектурные boundary checks после появления первого вертикального среза.
