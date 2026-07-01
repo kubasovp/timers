@@ -141,3 +141,12 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Build outputs
+dist/
+src-tauri/gen/
+src-tauri/target/
+
+# Test outputs
+test-results/
+playwright-report/

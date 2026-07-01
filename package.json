@@ -1,0 +1,40 @@
+{
+  "name": "timers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "typecheck": "vue-tsc -b",
+    "typecheck:ts7": "npx --yes --package typescript@rc tsc --noEmit --project tsconfig.app.json",
+    "lint": "depcruise src --config .dependency-cruiser.cjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "check": "npm run typecheck && npm run lint && npm run test"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-notification": "2.3.3",
+    "@tauri-apps/plugin-os": "2.3.2",
+    "@tauri-apps/plugin-sql": "2.4.0",
+    "vue": "3.5.39"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4",
+    "@playwright/test": "1.61.1",
+    "@types/node": "24.0.0",
+    "@vitejs/plugin-vue": "6.0.7",
+    "@vue/test-utils": "2.4.11",
+    "dependency-cruiser": "18.0.0",
+    "playwright": "1.61.1",
+    "typescript": "6.0.3",
+    "vite": "8.1.2",
+    "vitest": "4.1.9",
+    "vue-tsc": "3.3.6"
+  }
+}

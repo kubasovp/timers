@@ -35,6 +35,8 @@ Exit gate:
 
 ### M1. Project scaffold
 
+Status: Implemented. See `docs/implementation/m1-m3-status.md`.
+
 Цель: получить запускаемое desktop-приложение с пустым shell и базовыми проверками.
 
 Deliverables:
@@ -50,6 +52,8 @@ Exit gate:
 - пустой shell не содержит business logic.
 
 ### M2. Kernel and platform skeleton
+
+Status: Implemented with storage follow-up. See `docs/implementation/m1-m3-status.md`.
 
 Цель: реализовать минимальный runtime contract без привязки к конкретному feature.
 
@@ -68,6 +72,8 @@ Exit gate:
 - platform adapters не знают business details feature-модулей.
 
 ### M3. Custom timer vertical slice
+
+Status: Implemented with native storage follow-up. See `docs/implementation/m1-m3-status.md`.
 
 Цель: проверить архитектуру на самом простом пользовательском сценарии end-to-end.
 
@@ -165,12 +171,14 @@ Exit gate:
 - нет high-severity дефектов по recovery/time semantics;
 - MVP можно собрать и запустить на целевых платформах.
 
-## 3) Near-term backlog after M0
+## 3) Near-term backlog after M3
 
-1. Scaffold Tauri + Vue + TypeScript по версиям из `docs/implementation/m0-preflight.md`.
-2. Добавить `dependency-cruiser` config с правилами из M0 preflight.
-3. Зафиксировать acceptance tests для M3 custom timer как первый traceability slice.
-4. Добавить side-by-side `typecheck:ts7` после scaffold и собрать фактическую совместимость TypeScript 7 RC.
+1. UI iteration: уточнить layout, controls, states и visual density для timer shell.
+2. Native storage hardening: подключить Tauri SQLite adapter и migration runner к runtime.
+3. Focus feature: реализовать profiles, session state machine, phase scheduler source и restore tests.
+4. Reminders v1: начать с one-time reminders, queue, snooze/done и dedup.
+5. Sound experiments: расширять Web Audio API после стабилизации core time semantics.
+6. Добавить side-by-side `typecheck:ts7` и собрать фактическую совместимость TypeScript 7 RC.
 
 ## 4) Recommended task granularity
 
