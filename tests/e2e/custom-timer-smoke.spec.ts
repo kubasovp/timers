@@ -2,7 +2,6 @@ import { expect, test } from "@playwright/test";
 
 test("custom timer smoke", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Timers" }).click();
   await page.getByLabel("Title").fill("Smoke");
   await page.getByLabel("Minutes").fill("0");
   await page.getByLabel("Seconds").fill("3");

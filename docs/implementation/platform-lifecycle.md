@@ -15,6 +15,12 @@ Canonical: docs/implementation/platform-lifecycle.md
 5. Первичный reconcile scheduler.
 6. Переход приложения в `ready`.
 
+Фактическая MVP-реализация:
+- внутри Tauri runtime открывает `sqlite:timers.db` через `@tauri-apps/plugin-sql`;
+- platform migration runner применяет system и feature migrations из registry до mount UI;
+- custom timer repository и scheduler dispatch store используют SQLite;
+- вне Tauri web/dev runtime использует browser/localStorage adapters как fallback.
+
 ## 2) Readiness/Liveness semantics
 
 - `liveness`: процесс жив и event-loop отвечает.

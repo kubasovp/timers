@@ -21,7 +21,7 @@ M1-M3 реализованы как первый рабочий вертикал
 - fake clock и mock notification adapter для тестов;
 - custom timer feature с domain state machine, use-cases, UI, scheduler source, persistence ports и migrations.
 
-Фактический runtime на текущем срезе использует browser/localStorage repository для запускаемого приложения. SQL repository и migrations уже есть, но native SQLite connection/migration runner wiring остаётся follow-up до того, как storage можно считать полностью production-backed.
+Post-M4 update: запускаемый Tauri runtime теперь использует SQLite connection, migration runner, SQL custom timer repository и SQL-backed scheduler dispatch store. Browser/localStorage repository остаётся fallback для web/dev режима вне Tauri.
 
 ## 2) Implemented Scope By Milestone
 
@@ -40,7 +40,7 @@ Status: Implemented.
 
 ### M2. Kernel and platform skeleton
 
-Status: Implemented with storage follow-up.
+Status: Implemented; native storage follow-up closed after M4.
 
 Реализовано:
 - `AppFeature` and `FeatureRegistrationContext`;
@@ -50,15 +50,13 @@ Status: Implemented with storage follow-up.
 - browser notification adapter and mock notification adapter;
 - scheduler loop skeleton with source reconcile and dispatch;
 - scheduler dispatch store with idempotency/dedup records;
-- database and migration contracts.
-
-Follow-up:
-- добавить concrete Tauri SQL connection adapter;
-- добавить concrete migration runner, который применяет зарегистрированные migrations к SQLite.
+- database and migration contracts;
+- concrete Tauri SQL connection adapter;
+- concrete migration runner, который применяет зарегистрированные migrations к SQLite.
 
 ### M3. Custom timer vertical slice
 
-Status: Implemented with native storage follow-up.
+Status: Implemented; native runtime persistence follow-up closed after M4.
 
 Реализовано:
 - `features/custom-timer`;
@@ -75,7 +73,6 @@ Status: Implemented with native storage follow-up.
 
 Follow-up:
 - добавить explicit restart/recovery E2E test для persisted active timers;
-- подключить runtime persistence к Tauri SQLite вместо browser/localStorage;
 - заменить placeholder Tauri icon на полноценный app icon.
 
 ## 3) Verification
@@ -89,7 +86,7 @@ Verified on 2026-07-01:
 | `npm run test:e2e` | Passed |
 | `cargo check` in `src-tauri` | Passed after Linux WebKit/GTK development packages were installed |
 
-Line count для implementation code under `src`, `src-tauri` and `tests`, excluding build outputs: 2942 lines.
+Line count для source/test code under `src`, `src-tauri/src`, `src-tauri/capabilities` and `tests`, excluding generated schemas, lockfiles and build outputs: 3643 lines.
 
 ## 4) Current Development Prerequisites
 
@@ -105,8 +102,8 @@ sudo dnf install -y webkit2gtk4.1-devel libappindicator-gtk3-devel librsvg2-deve
 
 ## 5) Recommended Next Tasks
 
-1. UI iteration: уточнить timer screen layout, states, iconography, visual density и empty/error states.
-2. Focus feature: реализовать profiles, session state machine, phase scheduler source и restore tests.
-3. Reminders feature: начать с one-time reminders и notification queue до recurrence.
-4. Sound experiments: развивать Web Audio API после стабилизации core time semantics.
-5. Storage hardening: подключить Tauri SQLite adapter и migration runner до release-candidate hardening.
+1. Focus feature: реализовать profiles, session state machine, phase scheduler source и restore tests.
+2. Reminders feature: начать с one-time reminders и notification queue до recurrence.
+3. Sound experiments: развивать Web Audio API после стабилизации core time semantics.
+4. Добавить explicit restart/recovery E2E test для persisted active timers.
+5. Заменить placeholder Tauri icon на полноценный app icon.

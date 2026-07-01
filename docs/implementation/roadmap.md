@@ -53,7 +53,7 @@ Exit gate:
 
 ### M2. Kernel and platform skeleton
 
-Status: Implemented with storage follow-up. See `docs/implementation/m1-m3-status.md`.
+Status: Implemented; native storage follow-up closed after M4. See `docs/implementation/m1-m3-status.md`.
 
 Цель: реализовать минимальный runtime contract без привязки к конкретному feature.
 
@@ -73,7 +73,7 @@ Exit gate:
 
 ### M3. Custom timer vertical slice
 
-Status: Implemented with native storage follow-up. See `docs/implementation/m1-m3-status.md`.
+Status: Implemented; native runtime persistence follow-up closed after M4. See `docs/implementation/m1-m3-status.md`.
 
 Цель: проверить архитектуру на самом простом пользовательском сценарии end-to-end.
 
@@ -179,8 +179,8 @@ Exit gate:
 
 ## 3) Near-term backlog after M3
 
-1. UI iteration: уточнить layout, controls, states и visual density для timer shell.
-2. Native storage hardening: подключить Tauri SQLite adapter и migration runner к runtime.
+1. UI iteration: закрыто. Shell layout использует header во всю ширину и три равные колонки Focus/Timers/Reminders без sidebar navigation.
+2. Native storage hardening: закрыто. Tauri runtime подключает SQLite, зарегистрированные migrations и SQL-backed scheduler dispatch store.
 3. Focus feature: реализовать profiles, session state machine, phase scheduler source и restore tests.
 4. Reminders v1: начать с one-time reminders, queue, snooze/done и dedup.
 5. Sound experiments: расширять Web Audio API после стабилизации core time semantics.

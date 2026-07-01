@@ -377,6 +377,11 @@ context.migrations.add(customTimerMigrations);
 
 UI shell живёт в platform/app shell части и рендерит зарегистрированные routes/navigation.
 
+MVP shell layout после post-M4 UI iteration:
+- header во всю ширину: название приложения и версия;
+- ниже три равные колонки в порядке navigation registry: Focus, Timers, Reminders;
+- sidebar navigation отсутствует до отдельного product/UI решения.
+
 Feature UI живёт внутри модуля:
 
 ```text

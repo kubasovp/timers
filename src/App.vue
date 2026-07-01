@@ -1,52 +1,49 @@
 <script setup lang="ts">
-import { computed, ref, type Component } from "vue";
+import { computed, type Component } from "vue";
 import type { AppRuntime } from "@/platform/bootstrap/runtime";
+import packageInfo from "../package.json";
 
 const props = defineProps<{
   runtime: AppRuntime;
 }>();
 
-const navigationItems = computed(() => props.runtime.registries.navigation.list());
-const currentPath = ref(navigationItems.value[0]?.path ?? "/timers");
+const appVersion = packageInfo.version;
+const panels = computed(() =>
+  props.runtime.registries.navigation
+    .list()
+    .map((item) => {
+      const route = props.runtime.registries.routes.get(item.path);
 
-const activeRoute = computed(() => {
-  return (
-    props.runtime.registries.routes.get(currentPath.value) ??
-    props.runtime.registries.routes.list()[0]
-  );
-});
-
-const activeComponent = computed(() => activeRoute.value?.component as Component | undefined);
+      return route
+        ? {
+            item,
+            route,
+            component: route.component as Component
+          }
+        : null;
+    })
+    .filter((panel): panel is NonNullable<typeof panel> => panel !== null)
+);
 </script>
 
 <template>
   <div class="app-shell">
-    <aside class="sidebar" aria-label="Primary">
+    <header class="app-header">
       <div class="brand">
-        <span class="brand-mark" aria-hidden="true"></span>
         <span>Timers</span>
+        <span class="app-version">v{{ appVersion }}</span>
       </div>
-
-      <nav class="nav-list">
-        <button
-          v-for="item in navigationItems"
-          :key="item.path"
-          class="nav-item"
-          :class="{ active: item.path === currentPath }"
-          type="button"
-          @click="currentPath = item.path"
-        >
-          {{ item.label }}
-        </button>
-      </nav>
-    </aside>
+    </header>
 
     <main class="workspace">
-      <component
-        :is="activeComponent"
-        v-if="activeComponent && activeRoute"
-        v-bind="activeRoute.props"
-      />
+      <section
+        v-for="panel in panels"
+        :key="panel.item.path"
+        class="workspace-panel"
+        :aria-label="panel.item.label"
+      >
+        <component :is="panel.component" v-bind="panel.route.props" />
+      </section>
     </main>
   </div>
 </template>

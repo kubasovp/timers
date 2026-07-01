@@ -31,11 +31,14 @@ Verified on 2026-07-01:
 
 ## 3) Follow-up Items
 
-M4 не закрывает storage hardening и не заменяет M5/M6 work.
+M4 сам по себе не закрывал storage hardening и не заменяет M5/M6 work.
 
 Остаются follow-up items из M3:
-- подключить runtime persistence к Tauri SQLite вместо browser/localStorage;
 - добавить explicit restart/recovery E2E test для persisted active timers;
 - заменить placeholder Tauri icon на полноценный app icon.
+
+Закрыто после M4:
+- UI shell iteration: header во всю ширину и три равные колонки Focus/Timers/Reminders без sidebar navigation;
+- storage hardening: Tauri runtime использует SQLite connection, migration runner, SQL custom timer repository и SQL scheduler dispatch store.
 
 Следующий milestone: M5 Focus feature.
