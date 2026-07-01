@@ -1,120 +1,394 @@
 # Implementation Blueprint — Development View
 
-Status: Draft (implementation-ready baseline)  
+Status: Draft (feature/plugin-first baseline)  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-05-08  
-Scope: Техническая структура кода и правила зависимостей  
+Last updated (UTC): 2026-07-01  
+Scope: Техническая структура кода, feature-модули и правила зависимостей  
 Canonical: docs/implementation/development-view.md
 
 ## 1) Цель
 
-Документ фиксирует **минимально достаточный** technical baseline для начала реализации, чтобы:
-- не разъехалась архитектура по слоям;
-- импорты оставались контролируемыми;
-- каждый новый модуль добавлялся предсказуемо (tests + wiring + docs).
+Документ фиксирует **минимально достаточный** technical baseline для начала реализации Timers, чтобы:
 
-## 2) Предлагаемая структура папок
+- приложение не превратилось в запутанный монолит;
+- бизнес-функции подключались предсказуемо;
+- Pomodoro, Custom Timer и Reminders не мешали друг другу;
+- ядро оставалось минимальным и не знало бизнес-деталей;
+- каждый новый модуль добавлялся через один понятный контракт.
+
+Базовый архитектурный стиль: **plugin-first modular monolith**.
+
+Это не внешняя plugin system и не marketplace расширений. В MVP все модули находятся в одной кодовой базе, но подключаются к приложению как внутренние feature-плагины.
+
+Каноничный контракт модулей: `docs/implementation/feature-module-contract.md`.
+
+## 2) Главная структура runtime-кода
 
 ```text
-src/                                  # корень runtime-кода
-  core/                               # доменная модель и инварианты
-    domain/                           # bounded contexts предметной области
-      timer/                          # кастомные таймеры
-      pomodoro/                       # помодоро-сессии и циклы
-      reminder/                       # правила/состояния напоминаний
-      shared/                         # общие value objects и primitives
-  application/                        # use-cases и orchestration
-    use-cases/                        # сценарии приложения
-      commands/                       # mutating операции (write side)
-      queries/                        # read-only операции (read side)
-    ports/                            # интерфейсы для adapters (in/out)
-  adapters/                           # интеграции с внешним миром
-    primary/                          # входные интерфейсы (UI/CLI)
-      ui/                             # desktop UI adapter
-      cli/                            # future CLI adapter
-    secondary/                        # выходные интерфейсы (DB/OS/services)
-      sqlite/                         # persistence adapter
-      notifications/                  # OS notifications adapter
-      clock/                          # system clock adapter
-  infra/                              # runtime-платформа и bootstrap
-    scheduler/                        # движок планирования
-      loop/                           # основной event/tick loop
-      reconcile/                      # алгоритмы reconcile/misfire
-    bootstrap/                        # запуск приложения
-      wiring/                         # composition root / DI wiring
-      config/                         # загрузка и валидация конфигурации
+src/
+  kernel/                              # минимальное ядро приложения
+    feature-contract/                  # AppFeature, FeatureRegistrationContext
+    registries/                        # command/query/route/navigation/scheduler/settings registries
+    commands/                          # command bus contracts and result types
+    scheduler/                         # scheduler source/action contracts
+    errors/                            # app-level errors without business details
+
+  platform/                            # конкретные desktop/OS/storage интеграции
+    bootstrap/                         # composition root / module loading / DI wiring
+    tauri/                             # Tauri host bridge
+    sqlite/                            # SQLite connection, migrations runner, low-level DB tools
+    notifications/                     # OS notifications adapter
+    clock/                             # system clock adapter
+    scheduler-loop/                    # общий loop/reconcile dispatcher
+    config/                            # runtime config
+
+  features/                            # вертикальные бизнес-модули
+    custom-timer/
+      index.ts                         # exports AppFeature
+      manifest.ts
+      domain/
+      use-cases/
+      ports.ts
+      ui/
+      persistence/
+      scheduler/
+      migrations/
+      tests/
+
+    pomodoro/
+      index.ts
+      manifest.ts
+      domain/
+      use-cases/
+      ports.ts
+      ui/
+      persistence/
+      scheduler/
+      migrations/
+      tests/
+
+    reminders/
+      index.ts
+      manifest.ts
+      domain/
+      use-cases/
+      ports.ts
+      ui/
+      persistence/
+      scheduler/
+      migrations/
+      tests/
+
+  shared/                              # доменно-нейтральные primitives/utilities
+    time/
+    result/
+    validation/
 ```
 
-## 3) Ответственность слоёв
+Главная единица структуры — `feature`, а не слой.
 
-- `core/domain`: сущности, value objects, инварианты, доменные переходы состояний; без UI/DB/OS деталей.
-- `application`: orchestration use-cases, транзакционные boundaries, application ports.
-- `adapters`: реализация внешних интерфейсов (UI, SQLite, OS notifications, clock).
-- `infra`: runtime lifecycle, scheduler loop, dependency wiring, process-level concerns.
+Слои остаются как **внутренняя дисциплина модуля**:
 
-Согласовано с текущим C4-направлением: ядро + scheduler как platform-agnostic, outer layers как адаптеры.
+```text
+feature/ui -> feature/use-cases -> feature/domain
+feature/persistence -> feature/ports
+feature/scheduler -> feature/use-cases|feature/domain
+```
 
-## 4) Разрешённые направления импортов
+## 3) Ответственность частей системы
 
-Разрешённый граф (внутрь):
-- `infra -> application -> core`
-- `adapters -> application`
-- `adapters -> core` (только read-only contracts/value objects; без orchestration)
+### `kernel`
+
+Минимальное ядро приложения.
+
+Отвечает за:
+- контракты feature-модулей;
+- registry для routes/navigation/commands/queries/scheduler/settings/migrations;
+- общие result/error-типы;
+- общие интерфейсы scheduler source/action.
+
+Не отвечает за:
+- Pomodoro-логику;
+- custom timer-логику;
+- reminder-логику;
+- SQLite-запросы;
+- Tauri API;
+- Vue-компоненты.
+
+### `features/*`
+
+Вертикальные бизнес-модули.
+
+Каждый модуль владеет своей бизнес-функцией полностью:
+- domain rules;
+- state machine;
+- use-cases;
+- UI screens/components;
+- persistence mapping;
+- scheduler integration;
+- migrations;
+- tests.
+
+### `platform`
+
+Внешняя среда и runtime.
+
+Отвечает за:
+- Tauri bridge;
+- SQLite connection;
+- migrations runner;
+- OS notifications;
+- system clock;
+- scheduler loop;
+- composition root.
+
+### `shared`
+
+Только доменно-нейтральные вещи:
+- `Instant`, `Duration`, time helpers;
+- `Result`/`Option`-подобные типы;
+- простые validators;
+- pure utilities.
+
+`shared` не должен становиться свалкой бизнес-логики.
+
+## 4) Composition root
+
+Composition root живёт в:
+
+```text
+src/platform/bootstrap/
+```
+
+Только здесь приложение выбирает активные feature-модули и передаёт им registration context.
+
+```ts
+const enabledFeatures = [
+  customTimerFeature,
+  pomodoroFeature,
+  remindersFeature,
+];
+
+for (const feature of enabledFeatures) {
+  feature.register(featureRegistrationContext);
+}
+```
+
+В MVP список активных модулей статичен. Post-MVP можно добавить user settings для включения/отключения модулей.
+
+Отключение модуля означает, что его routes/navigation/commands/queries/scheduler sources не регистрируются. Данные в SQLite автоматически не удаляются.
+
+## 5) Разрешённые направления импортов
+
+Разрешено:
+
+```text
+platform/bootstrap -> features/*
+platform/* -> kernel/*
+features/* -> kernel/*
+features/* -> shared/*
+features/<id>/ui -> Vue
+features/<id>/persistence -> platform/sqlite contracts
+features/<id>/scheduler -> kernel/scheduler contracts
+```
+
+Внутри feature-модуля:
+
+```text
+ui -> use-cases -> domain
+scheduler -> use-cases|domain
+persistence -> ports|domain value objects
+```
 
 Запрещено:
-- `core -> application|adapters|infra`
-- `application -> infra`
-- `application -> UI framework / Tauri / SQLite SDK`
 
-## 5) Где живут use-case команды
+```text
+kernel -> features/*
+kernel -> platform/*
+kernel -> Vue|Tauri|SQLite
+features/<id>/domain -> Vue|Tauri|SQLite
+features/<id>/use-cases -> Vue|Tauri
+features/A -> features/B/internal/*
+platform/scheduler-loop -> features/*/ui
+```
 
-- `src/application/use-cases/commands/*`.
-- Один файл = один use-case command handler (например, `start_timer`, `pause_timer`, `create_reminder`).
-- Read side (`queries`) не меняет state и может использовать отдельные read-model interfaces.
+## 6) Публичная поверхность модуля
 
-## 6) Где живёт scheduler loop
+Каждый feature-модуль имеет единственный public entrypoint:
 
-- `src/infra/scheduler/loop/*`.
-- Scheduler reconcile logic может вызывать application-level use-cases/ports, но не должен напрямую внедрять UI-сценарии.
-- Абсолютное время и reconcile policy должны быть согласованы с `docs/implementation/scheduler-contract.md`.
+```text
+src/features/<feature-id>/index.ts
+```
 
-## 7) Где происходит wiring зависимостей
+Он экспортирует:
+- `AppFeature`;
+- публичные типы, если они нужны другим модулям;
+- публичный contract/API, если зависимость между модулями действительно нужна.
 
-- Composition root: `src/infra/bootstrap/wiring/*`.
-- Только здесь связываются конкретные реализации (SQLite repo, Tauri notifier, system clock) с application ports.
-- Любой модуль вне composition root не создаёт инфраструктурные зависимости через `new`/`init` скрыто внутри домена.
+Другим модулям запрещено импортировать файлы глубже public entrypoint без отдельного архитектурного решения.
 
-## 8) Публичные контракты слоя
+Плохо:
 
-Публичными контрактами считаются:
-- `application/ports/*` (inbound/outbound interfaces);
-- команды/DTO use-case слоя, используемые UI/CLI адаптерами;
-- доменные state-machine контракты (`docs/state-machines/*`) как поведенческий reference.
+```ts
+import { reminderRepository } from '@/features/reminders/persistence/reminderRepository';
+```
 
-Изменение публичного контракта требует:
-1) обновить контрактный документ;
-2) обновить тесты интеграции;
-3) обновить traceability в `docs/testing/mvp-test-plan.md`.
+Допустимо:
 
-## 9) Forbidden dependencies (анти-примеры)
+```ts
+import { remindersFeature } from '@/features/reminders';
+```
 
-Явно запрещённые импорты:
-- `src/core/**` импортирует `tauri`, `electron`, `sqlite`, `sqlx`, `rusqlite`, `vue`.
-- `src/application/**` импортирует конкретный DB driver.
-- `src/infra/scheduler/**` импортирует UI state store напрямую.
-- `src/adapters/primary/ui/**` содержит SQL-запросы.
+Допустимо при явной зависимости:
 
-## 10) Definition of Done для нового модуля
+```ts
+import type { ReminderId } from '@/features/reminders';
+```
 
-Новый компонент считается завершённым только если выполнены все пункты:
-1. Есть unit-тесты на доменные инварианты/ветки use-case.
-2. Есть минимум один integration test на wiring (happy path).
-3. Модуль подключён в composition root.
-4. Добавлены/обновлены метрики/логи (если модуль участвует в runtime).
-5. Обновлены соответствующие документы (`implementation/*`, `testing/*`, при необходимости ADR).
-6. Добавлен пункт в release notes / changelog (если влияет на пользовательское поведение).
+## 7) Inter-feature communication
 
-## 11) Решение по структуре MVP
+Приоритет способов связи:
 
-- Отдельная директория `read-models` в MVP не вводится; достаточно `application/use-cases/queries` и SQL/read-запросов в persistence adapter.
-- Feature-sliced структура для UI в MVP не обязательна; используем простой adapter-first layout и вернёмся к рефакторингу по мере роста UI.
+1. **Не связывать модули**, если сценарий можно оставить внутри одного feature.
+2. **Command/query registry**, если один модуль должен запросить действие приложения.
+3. **Публичный API модуля**, если есть настоящая стабильная зависимость.
+4. **Domain/app events** только для history, logs, metrics, не как основной бизнес-механизм.
+
+Event bus не является основным способом бизнес-взаимодействия в MVP.
+
+## 8) Scheduler loop
+
+Scheduler loop живёт в:
+
+```text
+src/platform/scheduler-loop/
+```
+
+Scheduler loop не знает бизнес-деталей Pomodoro/Timer/Reminder. Он работает с `SchedulerSource`, зарегистрированными модулями:
+
+```ts
+export interface SchedulerSource {
+  id: string;
+  sourceType: string;
+
+  getNextFireAt(now: Instant): Promise<Instant | null>;
+  reconcile(now: Instant): Promise<SchedulerAction[]>;
+}
+```
+
+Feature-модули сами реализуют правила reconcile своей области.
+
+Общий scheduler отвечает за:
+- tick loop;
+- вызов registered sources;
+- idempotency/dedup на уровне dispatch;
+- retry/failure policy;
+- передачу notification requests в platform notifications adapter.
+
+Поведение loop должно быть согласовано с `docs/implementation/scheduler-contract.md`.
+
+## 9) Где живут use-case команды
+
+Use-cases живут внутри конкретного feature-модуля:
+
+```text
+src/features/custom-timer/use-cases/startTimer.ts
+src/features/pomodoro/use-cases/startPomodoroSession.ts
+src/features/reminders/use-cases/createReminder.ts
+```
+
+Регистрация команд происходит в `feature.register(context)`:
+
+```ts
+context.commands.add('timer.start', startTimer);
+context.commands.add('pomodoro.start', startPomodoroSession);
+context.commands.add('reminder.create', createReminder);
+```
+
+Один command handler = один пользовательский или runtime-сценарий.
+
+## 10) Где живут DB migrations
+
+Миграции принадлежат feature-модулям, но исполняются централизованно platform migrations runner.
+
+```text
+src/features/custom-timer/migrations/
+src/features/pomodoro/migrations/
+src/features/reminders/migrations/
+```
+
+Модуль регистрирует свои миграции через:
+
+```ts
+context.migrations.add(customTimerMigrations);
+```
+
+Это позволяет отключать UI/commands модуля без автоматического удаления пользовательских данных.
+
+## 11) UI structure
+
+UI shell живёт в platform/app shell части и рендерит зарегистрированные routes/navigation.
+
+Feature UI живёт внутри модуля:
+
+```text
+src/features/custom-timer/ui/
+src/features/pomodoro/ui/
+src/features/reminders/ui/
+```
+
+Анти-паттерн:
+
+```text
+Vue component -> считает время -> пишет в local state/SQLite
+```
+
+Целевой поток:
+
+```text
+Vue component -> command/query -> feature use-case -> feature domain -> persistence port
+```
+
+## 12) Архитектурные проверки
+
+Минимальные проверки в CI:
+
+1. `kernel` не импортирует `features`, `platform`, `Vue`, `Tauri`, `SQLite`.
+2. `features/*/domain` не импортирует `Vue`, `Tauri`, `SQLite`.
+3. `features/*/use-cases` не импортирует `Vue`, `Tauri`.
+4. `features/A` не импортирует внутренние пути `features/B/*`, кроме public entrypoint.
+5. `platform/scheduler-loop` не импортирует UI.
+
+Для MVP допустимо начать с dependency-cruiser или ESLint boundaries. Главное — зафиксировать правило до роста кода.
+
+## 13) Definition of Done для нового feature-модуля
+
+Новый feature-модуль считается завершённым, если:
+
+1. Есть `index.ts` с `AppFeature`.
+2. Есть `manifest.ts` с `id`, `title`, `version`, `dependencies`.
+3. Все routes/navigation/commands/queries/scheduler sources регистрируются через `register(context)`.
+4. Нет импортов из внутренних файлов другого модуля.
+5. Есть unit-тесты на domain/use-cases.
+6. Есть integration test на регистрацию модуля в composition root.
+7. Если модуль хранит данные — есть migrations и описание схемы.
+8. Если модуль участвует в scheduler — есть тесты reconcile/idempotency.
+9. Обновлены docs/release notes при изменении пользовательского поведения.
+
+## 14) Решение по структуре MVP
+
+MVP реализуется как три feature-модуля:
+
+```text
+features/custom-timer
+features/pomodoro
+features/reminders
+```
+
+Рекомендуемый порядок реализации:
+
+1. `custom-timer` — первый вертикальный срез и проверка feature contract.
+2. `pomodoro` — второй модуль с отдельной state machine и профилями.
+3. `reminders` — самый сложный модуль из-за повторов, snooze, missed events, DST/timezone и очереди уведомлений.
+
+Отдельная глобальная структура `core/application/adapters` в MVP не используется как главный layout. Чистые зависимости сохраняются внутри каждого feature-модуля и через `kernel/platform` boundary.
