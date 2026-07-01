@@ -23,7 +23,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -142,7 +143,8 @@ button:disabled {
   font-weight: 600;
 }
 
-.field input {
+.field input,
+.field select {
   min-height: 40px;
   width: 100%;
   border: 1px solid #cbd5df;
@@ -152,7 +154,8 @@ button:disabled {
   background: #ffffff;
 }
 
-.field input:focus {
+.field input:focus,
+.field select:focus {
   border-color: #2f6f73;
   outline: 3px solid rgba(47, 111, 115, 0.16);
 }
@@ -260,6 +263,81 @@ button:disabled {
   gap: 8px;
 }
 
+.focus-session,
+.focus-start {
+  display: grid;
+  gap: 12px;
+}
+
+.focus-session-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.focus-time {
+  min-width: 92px;
+  font-variant-numeric: tabular-nums;
+  font-size: 30px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.progress-track {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5ebf0;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #2f6f73;
+}
+
+.profile-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #607080;
+  font-size: 18px;
+}
+
+.profile-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.profile-name-field,
+.profile-form-actions {
+  grid-column: 1 / -1;
+}
+
+.profile-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-list {
+  display: grid;
+  gap: 8px;
+}
+
+.profile-item {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #d9e1e8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
 .empty-state,
 .status-line {
   margin: 0;
@@ -295,6 +373,19 @@ button:disabled {
   }
 
   .timer-remaining {
+    text-align: left;
+  }
+
+  .focus-session-main,
+  .profile-form {
+    grid-template-columns: 1fr;
+  }
+
+  .focus-session-main {
+    display: grid;
+  }
+
+  .focus-time {
     text-align: left;
   }
 

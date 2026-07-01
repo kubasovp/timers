@@ -12,6 +12,11 @@ import { BrowserCustomTimerRepository } from "@/features/custom-timer/persistenc
 import { createDefaultTimerPresets } from "@/features/custom-timer/persistence/default-presets";
 import { SqlCustomTimerRepository } from "@/features/custom-timer/persistence/sql-custom-timer-repository";
 import type { CustomTimerRepository } from "@/features/custom-timer/ports";
+import { createFocusFeature } from "@/features/focus";
+import { BrowserFocusRepository } from "@/features/focus/persistence/browser-focus-repository";
+import { createDefaultFocusProfiles } from "@/features/focus/persistence/default-profiles";
+import { SqlFocusRepository } from "@/features/focus/persistence/sql-focus-repository";
+import type { FocusRepository } from "@/features/focus/ports";
 import { SystemClock } from "@/platform/clock/system-clock";
 import { BrowserNotificationAdapter } from "@/platform/notifications/browser-notification-adapter";
 import {
@@ -41,6 +46,7 @@ export interface AppRuntime {
 interface RuntimeStorage {
   mode: AppRuntime["storageMode"];
   customTimerRepository: CustomTimerRepository;
+  focusRepository: FocusRepository;
   schedulerDispatchStore: SchedulerDispatchStore;
   migrationRunner?: SqliteMigrationRunner;
   database?: TauriSqliteDatabaseConnection;
@@ -54,6 +60,11 @@ export async function createAppRuntime(): Promise<AppRuntime> {
 
   registerShellPlaceholders(context);
 
+  createFocusFeature({
+    clock,
+    repository: storage.focusRepository
+  }).register(context);
+
   createCustomTimerFeature({
     clock,
     repository: storage.customTimerRepository
@@ -64,6 +75,7 @@ export async function createAppRuntime(): Promise<AppRuntime> {
 
   if (storage.migrationRunner) {
     await storage.migrationRunner.apply(migrations);
+    await ensureFocusProfiles(storage.focusRepository, clock);
     await ensureCustomTimerPresets(storage.customTimerRepository, clock);
   }
 
@@ -96,6 +108,7 @@ async function createRuntimeStorage(): Promise<RuntimeStorage> {
     return {
       mode: "browser",
       customTimerRepository: new BrowserCustomTimerRepository(),
+      focusRepository: new BrowserFocusRepository(),
       schedulerDispatchStore: new BrowserSchedulerDispatchStore()
     };
   }
@@ -105,10 +118,26 @@ async function createRuntimeStorage(): Promise<RuntimeStorage> {
   return {
     mode: "native-sqlite",
     customTimerRepository: new SqlCustomTimerRepository(database),
+    focusRepository: new SqlFocusRepository(database),
     schedulerDispatchStore: new SqlSchedulerDispatchStore(database),
     migrationRunner: new SqliteMigrationRunner(database),
     database
   };
+}
+
+async function ensureFocusProfiles(
+  repository: FocusRepository,
+  clock: SystemClock
+): Promise<void> {
+  const profiles = await repository.listProfiles();
+
+  if (profiles.length > 0) {
+    return;
+  }
+
+  await Promise.all(
+    createDefaultFocusProfiles(clock.now()).map((profile) => repository.saveProfile(profile))
+  );
 }
 
 async function ensureCustomTimerPresets(

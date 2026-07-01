@@ -21,7 +21,7 @@ Canonical: docs/implementation/data-model-v1.md
 1. `active_timer_sessions`
 - `id` (PK)
 - `session_type` (`focus` | `custom_timer`)
-- `status` (`running` | `paused` | `completed` | `stopped` | `skipped` | `running_focus` | `running_break` | `paused_focus` | `paused_break`)
+- `status` (`running` | `paused` | `completed` | `stopped` | `running_focus` | `running_break` | `paused_focus` | `paused_break`)
 - `title` nullable
 - `started_at_utc`, `ends_at_utc`, `paused_at_utc`, `completed_at_utc`, `stopped_at_utc` nullable
 - `duration_total_sec`
@@ -39,7 +39,9 @@ Canonical: docs/implementation/data-model-v1.md
 
 `status` должен сохраняться без потерь относительно canonical state machines:
 - custom timer: `running`/`paused`/`completed`/`stopped`;
-- focus: `running_focus`/`running_break`/`paused_focus`/`paused_break`/`completed`/`stopped`/`skipped`.
+- focus: `running_focus`/`running_break`/`paused_focus`/`paused_break`/`completed`/`stopped`.
+
+Focus phase skip не является terminal session status. Он фиксируется отдельным `history_events.event_type = focus_phase_skipped` с payload текущей/следующей фазы.
 
 Примечание: общая таблица `active_timer_sessions` и общий `status` enum — логический baseline, а не требование хранить focus/custom timer в одном физическом enum. Feature-модули могут разделить storage, если state machines и queries сохраняют тот же observable behavior.
 

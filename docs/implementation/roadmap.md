@@ -112,6 +112,8 @@ Exit gate:
 
 ### M5. Focus feature
 
+Status: Implemented. See `docs/implementation/m5-status.md`.
+
 Цель: добавить второй feature-модуль и проверить повторяемость plugin-first подхода.
 
 Deliverables:
@@ -125,7 +127,7 @@ Deliverables:
 Exit gate:
 - одновременно активна только одна focus session;
 - focus/break phases корректно переходят после sleep/restart;
-- skip фиксируется отдельно от completed.
+- phase-level skip фиксируется отдельно от completed.
 
 ### M6. Reminders v1: one-time and queue
 
@@ -181,7 +183,7 @@ Exit gate:
 
 1. UI iteration: закрыто. Shell layout использует header во всю ширину и три равные колонки Focus/Timers/Reminders без sidebar navigation.
 2. Native storage hardening: закрыто. Tauri runtime подключает SQLite, зарегистрированные migrations и SQL-backed scheduler dispatch store.
-3. Focus feature: реализовать profiles, session state machine, phase scheduler source и restore tests.
+3. Focus feature: закрыто. Реализованы profiles, session state machine, phase scheduler source и restore tests.
 4. Reminders v1: начать с one-time reminders, queue, snooze/done и dedup.
 5. Sound experiments: расширять Web Audio API после стабилизации core time semantics.
 6. Добавить side-by-side `typecheck:ts7` и собрать фактическую совместимость TypeScript 7 RC.

@@ -30,6 +30,14 @@ module.exports = {
       }
     },
     {
+      name: "focus-does-not-import-other-feature-internals",
+      severity: "error",
+      from: { path: "^src/features/focus" },
+      to: {
+        path: "^src/features/(?!focus(?:/|$))[^/]+/.+"
+      }
+    },
+    {
       name: "scheduler-loop-does-not-import-feature-ui",
       severity: "error",
       from: { path: "^src/platform/scheduler-loop" },
