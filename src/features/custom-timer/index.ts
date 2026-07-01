@@ -44,7 +44,9 @@ export function createCustomTimerFeature(
       context.commands.add(CUSTOM_TIMER_COMMANDS.STOP, useCases.stop);
       context.commands.add(CUSTOM_TIMER_COMMANDS.RESTART, useCases.restart);
       context.commands.add(CUSTOM_TIMER_COMMANDS.COMPLETE, useCases.complete);
+      context.commands.add(CUSTOM_TIMER_COMMANDS.DELETE_COMPLETED, useCases.deleteCompleted);
       context.queries.add(CUSTOM_TIMER_QUERIES.LIST_ACTIVE, useCases.listActive);
+      context.queries.add(CUSTOM_TIMER_QUERIES.LIST_COMPLETED, useCases.listCompleted);
       context.queries.add(CUSTOM_TIMER_QUERIES.LIST_PRESETS, useCases.listPresets);
       context.scheduler.addSource(new CustomTimerSchedulerSource(dependencies.repository));
       context.migrations.add(customTimerMigrations);

@@ -107,6 +107,15 @@ export class SqlCustomTimerRepository implements CustomTimerRepository {
     return rows.map(mapSession);
   }
 
+  async listCompletedSessions(): Promise<CustomTimerSession[]> {
+    const rows = await this.db.select<TimerSessionRow>(
+      `select * from active_timer_sessions
+       where session_type = 'custom_timer' and status = 'completed'
+       order by coalesce(completed_at_utc, ends_at_utc) desc`
+    );
+    return rows.map(mapSession);
+  }
+
   async listDueRunningSessions(now: Instant): Promise<CustomTimerSession[]> {
     const rows = await this.db.select<TimerSessionRow>(
       `select * from active_timer_sessions
@@ -115,6 +124,13 @@ export class SqlCustomTimerRepository implements CustomTimerRepository {
       [now]
     );
     return rows.map(mapSession).filter((session) => isDue(session.endsAtUtc, now));
+  }
+
+  async deleteSession(id: string): Promise<void> {
+    await this.db.execute(
+      `delete from active_timer_sessions where id = ? and session_type = 'custom_timer'`,
+      [id]
+    );
   }
 
   async listPresets(): Promise<CustomTimerPreset[]> {

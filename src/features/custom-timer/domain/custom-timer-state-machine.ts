@@ -94,6 +94,17 @@ export function stopCustomTimer(
     return transition;
   }
 
+  if (session.completedAtUtc) {
+    return ok({
+      ...session,
+      status: "completed",
+      stoppedAtUtc: undefined,
+      pausedAtUtc: undefined,
+      remainingSecAtPause: undefined,
+      version: session.version + 1
+    });
+  }
+
   return ok({
     ...session,
     status: "stopped",
@@ -108,7 +119,7 @@ export function restartCustomTimer(
   session: CustomTimerSession,
   now: Instant
 ): Result<CustomTimerSession> {
-  const transition = ensureStatus(session, ["running", "paused"], "restart");
+  const transition = ensureStatus(session, ["running", "paused", "completed"], "restart");
 
   if (!transition.ok) {
     return transition;
@@ -121,7 +132,6 @@ export function restartCustomTimer(
     endsAtUtc: addSeconds(now, session.durationTotalSec),
     pausedAtUtc: undefined,
     remainingSecAtPause: undefined,
-    completedAtUtc: undefined,
     stoppedAtUtc: undefined,
     version: session.version + 1
   });

@@ -54,10 +54,26 @@ export class BrowserCustomTimerRepository implements CustomTimerRepository {
     return sessions.filter((session) => session.status === "running" || session.status === "paused");
   }
 
+  async listCompletedSessions(): Promise<CustomTimerSession[]> {
+    const sessions = await this.listSessions();
+    return sessions
+      .filter((session) => session.status === "completed")
+      .sort(compareCompletedSessions);
+  }
+
   async listDueRunningSessions(now: Instant): Promise<CustomTimerSession[]> {
     const sessions = await this.listSessions();
     return sessions.filter(
       (session) => session.status === "running" && isDue(session.endsAtUtc, now)
+    );
+  }
+
+  async deleteSession(id: string): Promise<void> {
+    await this.withState(
+      async (state) => {
+        state.sessions = state.sessions.filter((session) => session.id !== id);
+      },
+      () => this.fallback.deleteSession(id)
     );
   }
 
@@ -104,7 +120,11 @@ export class BrowserCustomTimerRepository implements CustomTimerRepository {
     const storage = getLocalStorage();
 
     if (!storage) {
-      return this.fallback.listActiveSessions();
+      const [active, completed] = await Promise.all([
+        this.fallback.listActiveSessions(),
+        this.fallback.listCompletedSessions()
+      ]);
+      return [...active, ...completed];
     }
 
     return readState(storage, this.storageKey).sessions.map(clone);
@@ -151,4 +171,10 @@ function writeState(storage: Storage, key: string, state: BrowserCustomTimerStat
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function compareCompletedSessions(a: CustomTimerSession, b: CustomTimerSession): number {
+  const aTime = a.completedAtUtc ?? a.endsAtUtc;
+  const bTime = b.completedAtUtc ?? b.endsAtUtc;
+  return bTime.localeCompare(aTime);
 }

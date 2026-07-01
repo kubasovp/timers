@@ -25,11 +25,13 @@ export const CUSTOM_TIMER_COMMANDS = {
   RESUME: "customTimer.resume",
   STOP: "customTimer.stop",
   RESTART: "customTimer.restart",
-  COMPLETE: "customTimer.complete"
+  COMPLETE: "customTimer.complete",
+  DELETE_COMPLETED: "customTimer.deleteCompleted"
 } as const;
 
 export const CUSTOM_TIMER_QUERIES = {
   LIST_ACTIVE: "customTimer.listActive",
+  LIST_COMPLETED: "customTimer.listCompleted",
   LIST_PRESETS: "customTimer.listPresets"
 } as const;
 
@@ -63,7 +65,9 @@ export interface CustomTimerUseCases {
   stop(payload: TimerIdPayload): Promise<Result<CustomTimerView>>;
   restart(payload: TimerIdPayload): Promise<Result<CustomTimerView>>;
   complete(payload: TimerIdPayload): Promise<Result<CustomTimerView>>;
+  deleteCompleted(payload: TimerIdPayload): Promise<Result<void>>;
   listActive(): Promise<Result<CustomTimerView[]>>;
+  listCompleted(): Promise<Result<CustomTimerView[]>>;
   listPresets(): Promise<Result<CustomTimerPreset[]>>;
 }
 
@@ -114,7 +118,37 @@ export function createCustomTimerUseCases(dependencies: {
     },
 
     async stop(payload) {
-      return mutateExistingTimer(dependencies, ids, payload.id, "timer_stopped", stopCustomTimer);
+      const now = dependencies.clock.now();
+      const session = await dependencies.repository.getSession(payload.id);
+
+      if (!session) {
+        return err(
+          appError({
+            code: "customTimer.not_found",
+            message: "Timer session was not found.",
+            category: "not_found",
+            details: { id: payload.id }
+          })
+        );
+      }
+
+      const stopped = stopCustomTimer(session, now);
+
+      if (!stopped.ok) {
+        return stopped;
+      }
+
+      await dependencies.repository.appendHistoryEvent(
+        historyEvent(ids, stopped.value, "timer_stopped", now)
+      );
+
+      if (stopped.value.status === "stopped") {
+        await dependencies.repository.deleteSession(stopped.value.id);
+      } else {
+        await dependencies.repository.saveSession(stopped.value);
+      }
+
+      return ok(toCustomTimerView(stopped.value, now));
     },
 
     async restart(payload) {
@@ -137,9 +171,53 @@ export function createCustomTimerUseCases(dependencies: {
       );
     },
 
+    async deleteCompleted(payload) {
+      const now = dependencies.clock.now();
+      const session = await dependencies.repository.getSession(payload.id);
+
+      if (!session) {
+        return err(
+          appError({
+            code: "customTimer.not_found",
+            message: "Timer session was not found.",
+            category: "not_found",
+            details: { id: payload.id }
+          })
+        );
+      }
+
+      if (session.status !== "completed") {
+        return err(
+          appError({
+            code: "customTimer.invalid_transition",
+            message: `Cannot delete timer from ${session.status}.`,
+            category: "domain",
+            details: {
+              command: "deleteCompleted",
+              currentStatus: session.status,
+              allowed: ["completed"]
+            }
+          })
+        );
+      }
+
+      await dependencies.repository.appendHistoryEvent(
+        historyEvent(ids, session, "timer_deleted", now)
+      );
+      await dependencies.repository.deleteSession(session.id);
+
+      return ok(undefined);
+    },
+
     async listActive() {
       const now = dependencies.clock.now();
       const sessions = await dependencies.repository.listActiveSessions();
+      return ok(sessions.map((session) => toCustomTimerView(session, now)));
+    },
+
+    async listCompleted() {
+      const now = dependencies.clock.now();
+      const sessions = await dependencies.repository.listCompletedSessions();
       return ok(sessions.map((session) => toCustomTimerView(session, now)));
     },
 

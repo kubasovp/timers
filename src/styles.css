@@ -213,6 +213,24 @@ button:disabled {
   gap: 8px;
 }
 
+.timer-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
 .timer-list {
   display: grid;
   gap: 8px;
@@ -228,6 +246,10 @@ button:disabled {
   border: 1px solid #d9e1e8;
   border-radius: 8px;
   background: #ffffff;
+}
+
+.timer-item.completed {
+  background: #fbfcfd;
 }
 
 .timer-main {

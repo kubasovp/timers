@@ -33,10 +33,21 @@ export class InMemoryCustomTimerRepository implements CustomTimerRepository {
       .map(clone);
   }
 
+  async listCompletedSessions(): Promise<CustomTimerSession[]> {
+    return Array.from(this.sessions.values())
+      .filter((session) => session.status === "completed")
+      .sort(compareCompletedSessions)
+      .map(clone);
+  }
+
   async listDueRunningSessions(now: Instant): Promise<CustomTimerSession[]> {
     return Array.from(this.sessions.values())
       .filter((session) => session.status === "running" && isDue(session.endsAtUtc, now))
       .map(clone);
+  }
+
+  async deleteSession(id: string): Promise<void> {
+    this.sessions.delete(id);
   }
 
   async listPresets(): Promise<CustomTimerPreset[]> {
@@ -58,4 +69,10 @@ export class InMemoryCustomTimerRepository implements CustomTimerRepository {
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function compareCompletedSessions(a: CustomTimerSession, b: CustomTimerSession): number {
+  const aTime = a.completedAtUtc ?? a.endsAtUtc;
+  const bTime = b.completedAtUtc ?? b.endsAtUtc;
+  return bTime.localeCompare(aTime);
 }

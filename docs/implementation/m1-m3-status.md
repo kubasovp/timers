@@ -100,6 +100,14 @@ sudo dnf install -y webkit2gtk4.1-devel libappindicator-gtk3-devel librsvg2-deve
 
 Эти `*-devel` packages являются development/build-time dependencies. Runtime application packages должны зависеть от соответствующих runtime libraries через выбранный Linux package format.
 
+Windows 11 development prerequisites validated on 2026-07-01:
+- Node.js and npm are managed through Volta and follow `.nvmrc` / `docs/implementation/m0-preflight.md` (`node v24.15.0`, `npm 11.12.1`);
+- project JS dependencies are installed with `npm ci`;
+- Playwright browser binaries are installed with `npx playwright install chromium`;
+- Rust is installed through Rustup with `stable-x86_64-pc-windows-msvc` (`rustc 1.96.1`, `cargo 1.96.1` in the checked Windows environment);
+- native Tauri checks require Microsoft Visual Studio 2022 Build Tools with the C++ workload;
+- Windows Tauri resource generation requires `src-tauri/icons/icon.ico` in addition to the PNG icon.
+
 ## 5) Recommended Next Tasks
 
 1. Focus feature: реализовать profiles, session state machine, phase scheduler source и restore tests.

@@ -39,6 +39,21 @@ describe("custom timer state machine", () => {
 
     const completed = completeCustomTimer(started.value, "2026-07-01T10:01:30.000Z");
     expect(completed.ok && completed.value.status).toBe("completed");
+    if (!completed.ok) return;
+
+    const restartedCompleted = restartCustomTimer(completed.value, "2026-07-01T10:02:00.000Z");
+    expect(restartedCompleted.ok && restartedCompleted.value.status).toBe("running");
+    expect(restartedCompleted.ok && restartedCompleted.value.id).toBe("timer-1");
+    if (!restartedCompleted.ok) return;
+
+    const stoppedReusable = stopCustomTimer(
+      restartedCompleted.value,
+      "2026-07-01T10:02:10.000Z"
+    );
+    expect(stoppedReusable.ok && stoppedReusable.value.status).toBe("completed");
+    expect(stoppedReusable.ok && stoppedReusable.value.completedAtUtc).toBe(
+      "2026-07-01T10:01:30.000Z"
+    );
   });
 
   it("returns a domain error for invalid transitions", () => {

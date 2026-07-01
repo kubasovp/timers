@@ -17,6 +17,7 @@ const seconds = ref(0);
 const statusLine = ref("");
 const statusIsError = ref(false);
 const activeTimers = ref<CustomTimerView[]>([]);
+const completedTimers = ref<CustomTimerView[]>([]);
 const presets = ref<CustomTimerPreset[]>([]);
 let refreshId: ReturnType<typeof setInterval> | undefined;
 
@@ -31,7 +32,7 @@ const totalSeconds = computed(() => {
 onMounted(() => {
   void loadAll();
   refreshId = setInterval(() => {
-    void loadActiveTimers();
+    void loadTimerLists();
   }, 500);
 });
 
@@ -42,7 +43,11 @@ onBeforeUnmount(() => {
 });
 
 async function loadAll(): Promise<void> {
-  await Promise.all([loadActiveTimers(), loadPresets()]);
+  await Promise.all([loadTimerLists(), loadPresets()]);
+}
+
+async function loadTimerLists(): Promise<void> {
+  await Promise.all([loadActiveTimers(), loadCompletedTimers()]);
 }
 
 async function loadActiveTimers(): Promise<void> {
@@ -52,6 +57,16 @@ async function loadActiveTimers(): Promise<void> {
 
   if (result.ok) {
     activeTimers.value = result.value;
+  }
+}
+
+async function loadCompletedTimers(): Promise<void> {
+  const result = await runtime.queries.execute<void, CustomTimerView[]>(
+    CUSTOM_TIMER_QUERIES.LIST_COMPLETED
+  );
+
+  if (result.ok) {
+    completedTimers.value = result.value;
   }
 }
 
@@ -86,7 +101,7 @@ async function startTimer(payload?: Partial<StartCustomTimerPayload>): Promise<v
 
   showStatus("Timer started.", false);
   title.value = "";
-  await loadActiveTimers();
+  await loadTimerLists();
 }
 
 async function runTimerCommand(command: string, id: string): Promise<void> {
@@ -98,7 +113,7 @@ async function runTimerCommand(command: string, id: string): Promise<void> {
   }
 
   showStatus("Timer updated.", false);
-  await loadActiveTimers();
+  await loadTimerLists();
 }
 
 function applyPreset(preset: CustomTimerPreset): void {
@@ -110,6 +125,36 @@ function applyPreset(preset: CustomTimerPreset): void {
     durationTotalSec: preset.durationTotalSec,
     presetId: preset.id
   });
+}
+
+async function runCompletedTimer(timer: CustomTimerView): Promise<void> {
+  const result = await runtime.commands.execute<{ id: string }, CustomTimerView>(
+    CUSTOM_TIMER_COMMANDS.RESTART,
+    { id: timer.id }
+  );
+
+  if (!result.ok) {
+    showStatus(result.error.message, true);
+    return;
+  }
+
+  showStatus("Timer started.", false);
+  await loadTimerLists();
+}
+
+async function deleteCompletedTimer(id: string): Promise<void> {
+  const result = await runtime.commands.execute<{ id: string }, void>(
+    CUSTOM_TIMER_COMMANDS.DELETE_COMPLETED,
+    { id }
+  );
+
+  if (!result.ok) {
+    showStatus(result.error.message, true);
+    return;
+  }
+
+  showStatus("Timer deleted.", false);
+  await loadCompletedTimers();
 }
 
 function formatRemaining(value: number): string {
@@ -185,7 +230,10 @@ function showStatus(message: string, isError: boolean): void {
       </div>
     </div>
 
-    <div class="surface section">
+    <div class="surface section timer-panel">
+      <div class="section-header">
+        <h2>Active timers</h2>
+      </div>
       <div v-if="activeTimers.length === 0" class="empty-state">No active timers.</div>
       <div v-else class="timer-list" aria-label="Active timers">
         <article v-for="timer in activeTimers" :key="timer.id" class="timer-item">
@@ -229,6 +277,43 @@ function showStatus(message: string, isError: boolean): void {
               @click="runTimerCommand(CUSTOM_TIMER_COMMANDS.STOP, timer.id)"
             >
               Stop
+            </button>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <div class="surface section timer-panel">
+      <div class="section-header">
+        <h2>Completed timers</h2>
+      </div>
+      <div v-if="completedTimers.length === 0" class="empty-state">No completed timers.</div>
+      <div v-else class="timer-list" aria-label="Completed timers">
+        <article v-for="timer in completedTimers" :key="timer.id" class="timer-item completed">
+          <div class="timer-main">
+            <p class="timer-title">{{ timer.title }}</p>
+            <div class="timer-meta">
+              <span>{{ timer.status }}</span>
+              <span>{{ formatDuration(timer.durationTotalSec) }}</span>
+            </div>
+          </div>
+
+          <div class="timer-remaining">{{ formatRemaining(timer.durationTotalSec) }}</div>
+
+          <div class="timer-actions">
+            <button
+              class="primary-button"
+              type="button"
+              @click="runCompletedTimer(timer)"
+            >
+              Run again
+            </button>
+            <button
+              class="danger-button"
+              type="button"
+              @click="deleteCompletedTimer(timer.id)"
+            >
+              Delete
             </button>
           </div>
         </article>
