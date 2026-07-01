@@ -2,7 +2,7 @@
 
 Status: Draft
 Owner: github.com/kubasovp
-Last reviewed (UTC): 2026-05-07
+Last reviewed (UTC): 2026-07-01
 Scope: Состояния и переходы напоминания
 Canonical: docs/state-machines/reminder.md
 
@@ -28,9 +28,14 @@ Canonical: docs/state-machines/reminder.md
 | snoozed | delete | deleted | удаление |
 
 ## Правила времени
-- В MVP daily reminders работают в `local-floating`.
+- В MVP one-time reminders работают как fixed UTC instant: после создания `one_time_fire_at_utc` не пересчитывается при смене timezone.
+- В MVP daily reminders работают в `local-floating`: локальное время интерпретируется в текущей timezone устройства.
 - DST spring-forward: перенос на ближайшее валидное локальное время.
 - DST fall-back: первое вхождение времени, без двойного срабатывания на одну локальную дату.
+- Если после смены timezone/restart пересчитанное daily-время текущей локальной даты уже прошло, применяется правило:
+  - в пределах grace window — сработать один раз сейчас;
+  - вне grace window — пропустить текущую локальную дату и взвести следующее срабатывание на завтра;
+  - если `last_fired_local_date` уже равен текущей локальной дате — не срабатывать повторно.
 
 ## Некорректные команды
 Некорректная команда в текущем состоянии возвращает доменную ошибку. UI показывает нейтральное уведомление.

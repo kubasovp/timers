@@ -1,5 +1,9 @@
 # Документация проекта Timers
 
+## Правило каноничности
+
+Один контракт или доменное правило должны иметь одно каноничное место. Остальные документы дают контекст и ссылки, но не копируют интерфейсы, таблицы и DoD-чеклисты целиком.
+
 ## Arc42-lite
 
 Документы с целевым видением, функциональной декомпозицией и качественными требованиями.
@@ -62,7 +66,6 @@ HTML/CSS макет экранов для быстрых UX-итераций и 
 - `implementation/m0-preflight.md`
 - `implementation/m1-m3-status.md`
 - `implementation/development-view.md`
-- `implementation/feature-module-contract.md`
 - `implementation/data-model-v1.md`
 - `implementation/scheduler-contract.md`
 - `implementation/platform-lifecycle.md`

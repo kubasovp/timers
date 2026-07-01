@@ -93,17 +93,20 @@ Exit gate:
 
 ### M4. Architecture checkpoint
 
-Цель: остановиться после первого среза и проверить, что выбранная архитектура не расползается.
+Цель: остановиться после первого среза и проверить, что выбранная архитектура и документация не расползаются.
 
 Deliverables:
 - включён dependency boundary check в CI;
 - проверено, что `kernel` не содержит business logic;
 - проверено, что feature imports идут только через public entrypoints;
+- применено правило "один контракт = одно каноничное место" для implementation docs;
+- `data-model-v1` сверена с фактическим storage опытом первого vertical slice и оставлена как логическая модель, а не преждевременный DDL;
 - обновлены feature module DoD и docs при необходимости.
 
 Exit gate:
 - boundary checks зелёные;
 - нет скрытой связанности между `custom-timer`, `platform` и `kernel`.
+- нет дублирующихся копий feature/scheduler контрактов в implementation docs.
 
 ### M5. Focus feature
 
@@ -147,6 +150,7 @@ Deliverables:
 - recalculation of `next_fire_at_utc`;
 - DST spring-forward/fall-back tests;
 - timezone switch tests;
+- tests for daily local-floating candidate already in the past: grace fire, skip-to-tomorrow and local-date dedup;
 - default snooze preset settings.
 
 Exit gate:

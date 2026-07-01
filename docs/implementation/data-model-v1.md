@@ -9,8 +9,10 @@ Canonical: docs/implementation/data-model-v1.md
 ## 1) Принципы
 
 - Уровень документа: **логическая схема**, без ORM/driver-специфики.
+- Документ задаёт ориентиры для persistence design, а не жёсткий DDL-контракт. После реализации вертикального среза фактические migrations/repository contracts становятся источником точных колонок, индексов и storage split.
 - Время хранения в БД: UTC (`*_at_utc`), локальные представления вычисляются на read-side.
 - Явно разделяем: `active state`, `history/event log`, `presets/templates`, `occurrences/executions`.
+- Перечисленные поля и индексы ниже можно корректировать по мере реализации, если сохраняются доменные инварианты: recoverability после restart/sleep, idempotency/dedup и возможность пересчитать future fire time из persisted rule.
 
 ## 2) Таблицы и ключевые поля
 
@@ -39,12 +41,14 @@ Canonical: docs/implementation/data-model-v1.md
 - custom timer: `running`/`paused`/`completed`/`stopped`;
 - focus: `running_focus`/`running_break`/`paused_focus`/`paused_break`/`completed`/`stopped`/`skipped`.
 
+Примечание: общая таблица `active_timer_sessions` и общий `status` enum — логический baseline, а не требование хранить focus/custom timer в одном физическом enum. Feature-модули могут разделить storage, если state machines и queries сохраняют тот же observable behavior.
+
 2. `active_reminders`
 - `id` (PK)
 - `title`, `message` nullable
 - `status` (`enabled` | `due` | `snoozed` | `done` | `disabled` | `deleted`)
 - `schedule_type` (`one_time` | `daily` | `interval`)
-- `time_semantics` (`local_floating`) для MVP
+- `time_semantics` schedule-specific (`local_floating` для daily в MVP; `fixed_zone` post-MVP)
 - `one_time_fire_at_utc` nullable
 - `daily_time_local` nullable (`HH:mm:ss`)
 - `interval_seconds` nullable
@@ -52,13 +56,18 @@ Canonical: docs/implementation/data-model-v1.md
 - `next_fire_at_utc`
 - `timezone_snapshot` (debug-only snapshot, nullable)
 - `last_fired_at_utc` nullable
-- `last_fired_local_date` nullable (`YYYY-MM-DD`, для daily dedup при DST fall-back)
+- `last_fired_local_date` nullable (`YYYY-MM-DD`, для daily dedup при DST fall-back и timezone jumps)
 - `snoozed_until_utc` nullable
 - `is_enabled` (bool)
 - `deleted_at_utc` nullable
 - `version`
 
 Правило: `next_fire_at_utc` — materialized scheduler value, но не единственный source of truth. Для daily/interval reminders persisted schedule fields обязательны, чтобы после restart/timezone/DST можно было пересчитать следующее срабатывание из правила.
+
+Time semantics baseline:
+- one-time reminders use `one_time_fire_at_utc` as a fixed UTC instant; timezone changes do not recalculate it;
+- daily reminders use `daily_time_local` as `local-floating` time in the current device timezone;
+- interval reminders use `interval_seconds` + `interval_anchor_at_utc`; timezone changes do not redefine the interval anchor.
 
 ### B. Presets/templates
 

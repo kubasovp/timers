@@ -2,7 +2,7 @@
 
 Status: Draft
 Owner: github.com/kubasovp
-Last reviewed (UTC): 2026-05-07
+Last reviewed (UTC): 2026-07-01
 Scope: Состояния и переходы кастомного таймера
 Canonical: docs/state-machines/custom-timer.md
 

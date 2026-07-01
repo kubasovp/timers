@@ -14,7 +14,8 @@ Canonical: docs/testing/mvp-test-plan.md
 2. Reminder one-time/daily/interval срабатывает по контракту времени.
 3. После restart/sleep выполняется reconcile без потери активного состояния.
 4. Misfire и dedup работают: нет дублей уведомлений.
-5. Миграции schema v1 применяются на чистой и обновляемой БД.
+5. Daily local-floating reminder корректно обрабатывает timezone switch, где локальное время текущей даты уже прошло: grace fire или skip-to-tomorrow без дублей.
+6. Миграции schema v1 применяются на чистой и обновляемой БД.
 
 ### P1 (желательно)
 

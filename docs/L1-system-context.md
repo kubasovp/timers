@@ -2,7 +2,7 @@
 
 Status: Draft  
 Owner: github.com/kubasovp  
-Last reviewed (UTC): 2026-05-06  
+Last reviewed (UTC): 2026-07-01
 Scope: Внешние акторы и границы системы Timers  
 Canonical: docs/L1-system-context.md
 

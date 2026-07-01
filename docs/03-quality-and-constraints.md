@@ -21,7 +21,6 @@ Timers использует **plugin-first modular monolith**. Этот доку
 
 - `docs/adr/ADR-003-plugin-first-modular-monolith.md`
 - `docs/implementation/development-view.md`
-- `docs/implementation/feature-module-contract.md`
 - `docs/implementation/scheduler-contract.md`
 - `docs/implementation/data-model-v1.md`
 
@@ -52,10 +51,12 @@ MVP-решения:
 - Нет зависимости от «идеального» тика `setInterval`.
 - Целевая задержка срабатывания уведомления: не более 1 секунды.
 - Daily reminders в MVP работают в режиме `local-floating`.
+- One-time reminders в MVP хранятся как fixed UTC instant; смена timezone не пересчитывает их fire time.
 - При DST spring-forward (локальное время отсутствует) событие сдвигается на ближайшее валидное локальное время.
 - При DST fall-back (локальное время двусмысленно) выбирается первое вхождение времени; напоминание срабатывает один раз на локальную календарную дату.
 - При смене timezone устройства:
   - `local-floating` пересчитывается в новой локальной timezone;
+  - если пересчитанное daily-время текущей локальной даты уже прошло, применяется grace/skip policy из `docs/implementation/scheduler-contract.md`;
   - `fixed-zone` (future) остаётся привязанным к выбранной IANA timezone.
 
 ### Предсказуемость UX

@@ -3,6 +3,7 @@
 Status: Accepted (MVP scope + future extension)
 Owner: github.com/kubasovp
 Date (UTC): 2026-05-07
+Last updated (UTC): 2026-07-01
 
 ## Context
 
@@ -28,11 +29,13 @@ Date (UTC): 2026-05-07
 - **Post-MVP:** optional `fixed-zone` с явным выбором IANA timezone на уровне напоминания.
 
 Правила исполнения:
+- One-time reminders в MVP хранятся как fixed UTC instant (`one_time_fire_at_utc`) и не пересчитываются при смене timezone.
 - DST spring-forward (локального времени не существует): перенос на ближайшее валидное локальное время.
 - DST fall-back (локальное время двусмысленно): выбирать первое вхождение времени.
 - Напоминание должно срабатывать один раз на локальную календарную дату (без дублей в fall-back).
 - При смене timezone устройства:
   - `local-floating` пересчитывается в новой локальной timezone;
+  - если пересчитанное daily-время текущей локальной даты уже прошло, scheduler применяет grace/skip policy;
   - `fixed-zone` (post-MVP) остаётся привязанным к выбранной IANA timezone.
 
 ## Consequences
@@ -48,6 +51,8 @@ Date (UTC): 2026-05-07
 - Увеличивается объём тестов (DST boundaries, timezone switches, reconcile).
 
 ### Notes for implementation
-- Хранить `time_semantics` (`local_floating` | `fixed_zone`).
+- Для daily reminders хранить `time_semantics` (`local_floating` | `fixed_zone` future).
+- One-time reminders не используют local-floating semantics; они хранят fixed UTC instant (`one_time_fire_at_utc`).
 - Для `fixed_zone` хранить `timezone_id` (IANA), например `Europe/Berlin`.
 - `nextAt` всегда материализовать в UTC для движка планирования, сохраняя исходные правила для пересчёта.
+- Для daily reminders хранить `last_fired_local_date` как dedup key по локальной календарной дате.

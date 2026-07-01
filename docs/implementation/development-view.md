@@ -20,7 +20,7 @@ Canonical: docs/implementation/development-view.md
 
 Это не внешняя plugin system и не marketplace расширений. В MVP все модули находятся в одной кодовой базе, но подключаются к приложению как внутренние feature-плагины.
 
-Каноничный контракт модулей: `docs/implementation/feature-module-contract.md`.
+Этот документ является каноничным местом для feature module contract, структуры кода, dependency rules и DoD feature-модуля. Runtime-поведение scheduler описывает `docs/implementation/scheduler-contract.md`; модель данных описывает `docs/implementation/data-model-v1.md`.
 
 ## 2) Главная структура runtime-кода
 
@@ -155,6 +155,51 @@ Tauri/Rust часть в MVP остаётся platform boundary. Бизнес-л
 
 `shared` не должен становиться свалкой бизнес-логики.
 
+## 3.1) Feature module contract
+
+Feature-модуль подключается к приложению через `AppFeature.register(context)`:
+
+```ts
+export interface AppFeature {
+  id: FeatureId;
+  title: string;
+  version: string;
+
+  dependencies?: FeatureId[];
+
+  register(context: FeatureRegistrationContext): void;
+}
+```
+
+```ts
+export interface FeatureRegistrationContext {
+  routes: RouteRegistry;
+  navigation: NavigationRegistry;
+  commands: CommandRegistry;
+  queries: QueryRegistry;
+  scheduler: SchedulerRegistry;
+  settings: SettingsRegistry;
+  migrations: MigrationRegistry;
+}
+```
+
+Feature-модуль может регистрировать:
+- routes/pages;
+- пункты навигации;
+- commands для write/use-case операций;
+- queries для read-only операций;
+- scheduler sources;
+- settings schema/defaults;
+- DB migrations;
+- domain/app event handlers только для observability/history/logs/metrics.
+
+Feature-модуль не должен:
+- импортировать внутренние файлы другого feature-модуля;
+- создавать Tauri/SQLite/notification dependencies скрыто внутри domain/use-cases;
+- менять глобальное состояние приложения напрямую;
+- использовать event bus как основной способ бизнес-взаимодействия;
+- предполагать, что другой модуль включён, если зависимость не объявлена явно.
+
 ## 4) Composition root
 
 Composition root живёт в:
@@ -277,17 +322,7 @@ Scheduler loop живёт в:
 src/platform/scheduler-loop/
 ```
 
-Scheduler loop не знает бизнес-деталей Focus/Timer/Reminder. Он работает с `SchedulerSource`, зарегистрированными модулями:
-
-```ts
-export interface SchedulerSource {
-  id: string;
-  sourceType: 'timer' | 'focus' | 'reminder';
-
-  getNextFireAt(now: Instant): Promise<Instant | null>;
-  reconcile(now: Instant): Promise<SchedulerAction[]>;
-}
-```
+Scheduler loop не знает бизнес-деталей Focus/Timer/Reminder. Он работает с `SchedulerSource`, зарегистрированными модулями. Каноничный интерфейс `SchedulerSource` и `SchedulerAction` живёт в `docs/implementation/scheduler-contract.md`.
 
 Feature-модули сами реализуют правила reconcile своей области.
 

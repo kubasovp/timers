@@ -13,8 +13,7 @@ Canonical: docs/open-items.md
 - state machine подход (формат + политика некорректных команд);
 - timezone/DST политика для MVP;
 - plugin-first modular monolith как базовая архитектура;
-- feature module contract (`AppFeature.register(context)`);
-- development view и dependency rule;
+- feature module contract (`AppFeature.register(context)`), development view и dependency rule;
 - метрики/тестовые бюджеты (MVP baseline);
 - стратегия роста истории БД (MVP baseline);
 - минимальный контракт автообновления (post-MVP ready baseline);
@@ -31,8 +30,7 @@ Canonical: docs/open-items.md
 - Quality & constraints: `docs/03-quality-and-constraints.md`
 - M0 preflight: `docs/implementation/m0-preflight.md`
 - Roadmap: `docs/implementation/roadmap.md`
-- Development view: `docs/implementation/development-view.md`
-- Feature module contract: `docs/implementation/feature-module-contract.md`
+- Development view + feature module contract: `docs/implementation/development-view.md`
 - ADR-002 timezone/DST: `docs/adr/ADR-002-time-semantics-for-reminders.md`
 - ADR-003 plugin-first modular monolith: `docs/adr/ADR-003-plugin-first-modular-monolith.md`
 - State machines:

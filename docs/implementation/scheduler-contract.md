@@ -2,7 +2,7 @@
 
 Status: Draft (implementation contract)  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-05-08  
+Last updated (UTC): 2026-07-01
 Scope: Поведение scheduler loop и runtime guarantees  
 Canonical: docs/implementation/scheduler-contract.md
 
@@ -84,8 +84,44 @@ Rules:
 
 Если `scheduled_for_utc < now_utc` на момент reconcile:
 - классифицируем как `misfire`;
-- для one-time reminder: выполнить немедленно с пометкой `missed->fired` (если в окне допуска);
+- для one-time reminder: выполнить немедленно с пометкой `missed->fired`, если событие находится в допустимом окне;
 - если событие слишком старое (например > 24ч) — не спамить уведомлениями, записать в history как `missed/skipped`.
+
+### 3.1) One-time reminders
+
+One-time reminder хранится как fixed UTC instant (`one_time_fire_at_utc`). Смена timezone устройства не пересчитывает этот момент.
+
+Если one-time fire time уже в прошлом:
+- `now_utc - scheduled_for_utc <= one_time_grace_window` — выполнить один раз сейчас;
+- `now_utc - scheduled_for_utc > one_time_grace_window` — записать `missed/skipped`, не показывать user-visible alert.
+
+MVP baseline для `one_time_grace_window`: 24 часа.
+
+### 3.2) Daily local-floating reminders
+
+Daily reminder хранит `daily_time_local` и пересчитывает candidate fire time в текущей timezone устройства:
+
+```text
+candidate = today @ daily_time_local in current device timezone
+```
+
+Перед сравнением с `now` применяются DST rules:
+- spring-forward: если локальное время не существует, сдвинуть на ближайшее валидное локальное время;
+- fall-back: если локальное время двусмысленно, выбрать первое вхождение.
+
+Если `candidate > now`, scheduler сохраняет `next_fire_at_utc = candidate` и не создаёт alert.
+
+Если `candidate` уже в прошлом на момент reconcile:
+
+| Условие | Поведение |
+|---|---|
+| `last_fired_local_date == today_local_date` | Не показывать alert повторно; пересчитать `next_fire_at_utc` на следующую локальную дату. |
+| `now - candidate <= daily_local_grace_window` | Выполнить один раз сейчас, записать `last_fired_local_date = today_local_date`, пересчитать следующий день. |
+| `now - candidate > daily_local_grace_window` | Пропустить текущую локальную дату без alert, записать `missed/skipped`, пересчитать следующий день. |
+
+MVP baseline для `daily_local_grace_window`: 1 час. Значение можно уточнять после инструментированных проверок, но оно должно быть одним общим правилом scheduler, а не UI-специфичной эвристикой.
+
+Dedup для daily reminders выполняется по локальной календарной дате (`last_fired_local_date`), а не только по UTC occurrence time. Это закрывает DST fall-back и timezone jump сценарии.
 
 ## 4) Retry policy
 
