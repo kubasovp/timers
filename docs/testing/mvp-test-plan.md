@@ -24,7 +24,7 @@ Canonical: docs/testing/mvp-test-plan.md
 
 ## 2) Non-functional smoke checks
 
-- Latency: reconcile tick p95 в пределах целевого бюджета (уточнить).
+- Latency: собрать `scheduler_reconcile_lag_ms` p95; фиксированный upper bound в MVP заранее не задаётся.
 - Reliability: повторный запуск после crash не приводит к потере запланированных событий.
 - Resource: scheduler в idle не вызывает заметной CPU-нагрузки.
 

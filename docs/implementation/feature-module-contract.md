@@ -178,7 +178,7 @@ Scheduler не знает бизнес-смысл Focus/Timer/Reminder. Он р�
 ```ts
 export interface SchedulerSource {
   id: string;
-  sourceType: string;
+  sourceType: 'timer' | 'focus' | 'reminder';
 
   getNextFireAt(now: Instant): Promise<Instant | null>;
   reconcile(now: Instant): Promise<SchedulerAction[]>;

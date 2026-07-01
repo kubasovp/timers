@@ -128,5 +128,5 @@ src/infra
 
 ## Follow-ups
 
-- Добавить dependency-cruiser/ESLint boundaries.
+- Добавить dependency-cruiser boundaries.
 - После первого вертикального среза проверить, не распухает ли `kernel`.

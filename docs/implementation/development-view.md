@@ -282,7 +282,7 @@ Scheduler loop не знает бизнес-деталей Focus/Timer/Reminder.
 ```ts
 export interface SchedulerSource {
   id: string;
-  sourceType: string;
+  sourceType: 'timer' | 'focus' | 'reminder';
 
   getNextFireAt(now: Instant): Promise<Instant | null>;
   reconcile(now: Instant): Promise<SchedulerAction[]>;
@@ -372,7 +372,7 @@ Vue component -> command/query -> feature use-case -> feature domain -> persiste
 4. `features/A` не импортирует внутренние пути `features/B/*`, кроме public entrypoint.
 5. `platform/scheduler-loop` не импортирует UI.
 
-Для MVP допустимо начать с dependency-cruiser или ESLint boundaries. Главное — зафиксировать правило до роста кода.
+Для MVP выбран `dependency-cruiser` как основной инструмент architecture boundary checks. ESLint можно добавить позже для style/correctness/Vue-specific linting, но не как M0 boundary tool.
 
 ## 13) Definition of Done для нового feature-модуля
 

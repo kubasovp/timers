@@ -10,7 +10,7 @@ Canonical: docs/L1-system-context.md
 flowchart LR
   U[Пользователь]
   S[Timers Desktop App]
-  OS[ОС: Windows / Linux / macOS]
+  OS[ОС: Windows / Linux\nmacOS post-MVP]
   N[Системный центр уведомлений]
 
   U -->|запускает и управляет| S

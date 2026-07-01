@@ -20,10 +20,19 @@ Canonical: docs/implementation/data-model-v1.md
 - `id` (PK)
 - `session_type` (`focus` | `custom_timer`)
 - `status` (`running` | `paused` | `completed` | `stopped` | `skipped` | `running_focus` | `running_break` | `paused_focus` | `paused_break`)
-- `started_at_utc`, `ends_at_utc`, `paused_at_utc` nullable
+- `title` nullable
+- `started_at_utc`, `ends_at_utc`, `paused_at_utc`, `completed_at_utc`, `stopped_at_utc` nullable
 - `duration_total_sec`
+- `remaining_sec_at_pause` nullable
 - `input_hours`, `input_minutes`, `input_seconds` (пользовательский формат ввода для custom timer)
+- `timer_preset_id` nullable (для custom timer)
 - `profile_id` nullable (для focus)
+- `focus_phase` nullable (`focus` | `short_break` | `long_break`)
+- `focus_cycle_index` nullable (1-based текущий цикл)
+- `focus_total_cycles` nullable
+- `focus_completed_cycles` nullable
+- `phase_started_at_utc`, `phase_ends_at_utc` nullable
+- `phase_duration_sec` nullable
 - `version` (optimistic concurrency)
 
 `status` должен сохраняться без потерь относительно canonical state machines:
@@ -33,12 +42,23 @@ Canonical: docs/implementation/data-model-v1.md
 2. `active_reminders`
 - `id` (PK)
 - `title`, `message` nullable
+- `status` (`enabled` | `due` | `snoozed` | `done` | `disabled` | `deleted`)
 - `schedule_type` (`one_time` | `daily` | `interval`)
 - `time_semantics` (`local_floating`) для MVP
+- `one_time_fire_at_utc` nullable
+- `daily_time_local` nullable (`HH:mm:ss`)
+- `interval_seconds` nullable
+- `interval_anchor_at_utc` nullable
 - `next_fire_at_utc`
 - `timezone_snapshot` (debug-only snapshot, nullable)
+- `last_fired_at_utc` nullable
+- `last_fired_local_date` nullable (`YYYY-MM-DD`, для daily dedup при DST fall-back)
+- `snoozed_until_utc` nullable
 - `is_enabled` (bool)
+- `deleted_at_utc` nullable
 - `version`
+
+Правило: `next_fire_at_utc` — materialized scheduler value, но не единственный source of truth. Для daily/interval reminders persisted schedule fields обязательны, чтобы после restart/timezone/DST можно было пересчитать следующее срабатывание из правила.
 
 ### B. Presets/templates
 
@@ -49,11 +69,46 @@ Canonical: docs/implementation/data-model-v1.md
 - `cycles_before_long_break`
 - `created_at_utc`, `updated_at_utc`
 
+4. `timer_presets`
+- `id` (PK)
+- `name`
+- `duration_total_sec`
+- `description` nullable
+- `category` nullable
+- `created_at_utc`, `updated_at_utc`
+
+5. `app_settings`
+- `key` (PK)
+- `value_json`
+- `schema_version`
+- `updated_at_utc`
+
+MVP settings include at least:
+- `visible_panels`
+- `window_close_behavior`
+- `default_snooze_sec`
+- `sound_enabled`
+- `sound_volume`
+- `telemetry_consent`
+
 ### C. Occurrences/executions
 
-4. `scheduler_occurrences`
+6. `reminder_occurrences`
 - `id` (PK)
-- `source_type` (`timer` | `reminder`)
+- `reminder_id` (FK -> `active_reminders.id`)
+- `scheduled_for_utc`
+- `status` (`due` | `fired` | `snoozed` | `done` | `missed` | `skipped` | `failed`)
+- `fired_at_utc` nullable
+- `acknowledged_at_utc` nullable
+- `snoozed_until_utc` nullable
+- `local_date_key` nullable (`YYYY-MM-DD`, для daily dedup)
+- `idempotency_key` (unique)
+
+Recurring reminder `done` закрывает конкретный `reminder_occurrence`, но не завершает само recurring rule. После acknowledgement recurring reminder возвращается к `enabled` с новым `next_fire_at_utc`.
+
+7. `scheduler_occurrences`
+- `id` (PK)
+- `source_type` (`timer` | `focus` | `reminder`)
 - `source_id`
 - `scheduled_for_utc`
 - `processed_at_utc` nullable
@@ -62,7 +117,7 @@ Canonical: docs/implementation/data-model-v1.md
 
 ### D. History/event log
 
-5. `history_events`
+8. `history_events`
 - `id` (PK)
 - `aggregate_type` (`timer_session` | `reminder` | `profile`)
 - `aggregate_id`
@@ -72,10 +127,10 @@ Canonical: docs/implementation/data-model-v1.md
 - `causation_id` nullable
 - `correlation_id` nullable
 
-6. `notification_delivery_log`
+9. `notification_delivery_log`
 - `id` (PK)
 - `occurrence_id` (FK -> scheduler_occurrences.id)
-- `channel` (`os_notification`)
+- `channel` (`os_notification` | `sound`)
 - `delivery_status` (`sent` | `failed` | `deduplicated`)
 - `attempt_no`
 - `created_at_utc`
@@ -83,13 +138,20 @@ Canonical: docs/implementation/data-model-v1.md
 ## 3) Связи
 
 - `active_timer_sessions.profile_id -> focus_profiles.id` (nullable FK).
+- `active_timer_sessions.timer_preset_id -> timer_presets.id` (nullable FK).
+- `reminder_occurrences.reminder_id -> active_reminders.id`.
 - `notification_delivery_log.occurrence_id -> scheduler_occurrences.id`.
 - Логические связи `scheduler_occurrences.source_id` к `active_*` (или архивным) сущностям валидируются приложением.
 
 ## 4) Индексы (минимум MVP)
 
 - `active_reminders(next_fire_at_utc, is_enabled)`.
+- `active_reminders(schedule_type, status, next_fire_at_utc)`.
 - `active_timer_sessions(status, ends_at_utc)`.
+- `active_timer_sessions(session_type, status)`.
+- `timer_presets(category, name)`.
+- `reminder_occurrences(reminder_id, scheduled_for_utc)`.
+- Unique: `reminder_occurrences(idempotency_key)`.
 - `scheduler_occurrences(source_type, source_id, scheduled_for_utc)`.
 - `history_events(aggregate_type, aggregate_id, occurred_at_utc)`.
 - Unique: `scheduler_occurrences(idempotency_key)`.
@@ -105,6 +167,7 @@ Canonical: docs/implementation/data-model-v1.md
 
 - Active records: soft-delete предпочтителен для reminders (`is_enabled=false`) в MVP.
 - Focus profiles: hard-delete разрешён, если нет активной зависимости.
+- Timer presets: hard-delete разрешён, если нет активной зависимости; history не удаляется.
 - History/occurrences: не удаляются синхронно с бизнес-удалением активной сущности.
 
 ## 7) Что считается history

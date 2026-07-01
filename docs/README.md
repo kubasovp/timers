@@ -58,6 +58,8 @@ HTML/CSS макет экранов для быстрых UX-итераций и 
 
 Технические документы для реализации: feature/plugin-first структура, контракты runtime, модель данных.
 
+- `implementation/roadmap.md`
+- `implementation/m0-preflight.md`
 - `implementation/development-view.md`
 - `implementation/feature-module-contract.md`
 - `implementation/data-model-v1.md`
