@@ -65,6 +65,7 @@ HTML/CSS макет экранов для быстрых UX-итераций и 
 - `implementation/roadmap.md`
 - `implementation/m0-preflight.md`
 - `implementation/m1-m3-status.md`
+- `implementation/m4-status.md`
 - `implementation/development-view.md`
 - `implementation/data-model-v1.md`
 - `implementation/scheduler-contract.md`

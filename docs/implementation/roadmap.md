@@ -93,6 +93,8 @@ Exit gate:
 
 ### M4. Architecture checkpoint
 
+Status: Closed by `docs/implementation/m4-status.md`.
+
 Цель: остановиться после первого среза и проверить, что выбранная архитектура и документация не расползаются.
 
 Deliverables:
