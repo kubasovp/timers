@@ -28,6 +28,7 @@
 
 - `adr/ADR-001-desktop-shell-tauri.md`
 - `adr/ADR-002-time-semantics-for-reminders.md`
+- `adr/ADR-003-plugin-first-modular-monolith.md`
 
 ## Policies (Draft)
 
