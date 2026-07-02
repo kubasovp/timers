@@ -2,7 +2,7 @@
 
 Status: Draft
 Owner: github.com/kubasovp
-Last reviewed (UTC): 2026-05-07
+Last reviewed (UTC): 2026-07-02
 Scope: Черновой процесс релизов, обновлений и fallback-поведения
 Canonical: docs/release-and-update-policy.md
 
@@ -22,7 +22,19 @@ Canonical: docs/release-and-update-policy.md
 4. Сформировать changelog.
 5. Подготовить `latest.json` и подписи.
 
-## 4. Update Manifest Contract (Draft)
+## 4. Build Artifacts (Draft)
+- Raw release binaries are emitted directly under `src-tauri/target/release/`: `timers` on Linux and `timers.exe` on Windows.
+- Installer/package artifacts are emitted under `src-tauri/target/release/bundle/<format>/`.
+- Fedora RPM package smoke uses:
+
+```bash
+npm run tauri:build -- --bundles rpm
+```
+
+- The expected Fedora artifact path is `src-tauri/target/release/bundle/rpm/Timers-0.1.0-1.x86_64.rpm` for version `0.1.0`.
+- AppImage is not an MVP release artifact until it has a passing packaged smoke check.
+
+## 5. Update Manifest Contract (Draft)
 `latest.json` содержит минимум:
 - `version`
 - `platform`
@@ -30,19 +42,19 @@ Canonical: docs/release-and-update-policy.md
 - `checksum`
 - `signature`
 
-## 5. Signature Verification
+## 6. Signature Verification
 - Проверка подписи обязательна перед установкой.
 - При провале проверки обновление не применяется.
 
-## 6. Install Modes (Draft)
+## 7. Install Modes (Draft)
 - `explicit_install`
 - `install_on_restart`
 
-## 7. Failure Handling
+## 8. Failure Handling
 - При недоступности сети/манифеста update-check = soft-fail.
 - Локальные функции таймеров/напоминаний продолжают работу без деградации.
 
-## 8. Future additions
+## 9. Future additions
 - Rollback strategy.
 - Staged rollout / canary updates.
 - Детализация платформенных каналов обновления.

@@ -86,6 +86,28 @@ Verified on 2026-07-01:
 | `npm run test:e2e` | Passed |
 | `cargo check` in `src-tauri` | Passed after Linux WebKit/GTK development packages were installed |
 
+Fedora packaging check on 2026-07-02:
+
+| Check | Result |
+|---|---|
+| Fedora environment | Fedora 44 Workstation, Node `v24.15.0`, npm `11.12.1`, rustc `1.95.0`, cargo `1.95.0` |
+| `npm run check` | Passed: typecheck, dependency boundary lint and 19 tests |
+| `npm run tauri:build -- --bundles rpm` | Passed |
+| RPM artifact | `src-tauri/target/release/bundle/rpm/Timers-0.1.0-1.x86_64.rpm` |
+| RPM metadata | `timers 0.1.0-1`, `x86_64`; installs `/usr/bin/timers`, desktop entry and icon |
+| Runtime dependencies reported by RPM | `libwebkit2gtk-4.1.so.0`, `libgtk-3.so.0` |
+| Manual Fedora smoke | Raw Linux binary `src-tauri/target/release/timers` starts, UI is visible and multiple timers can be started successfully |
+
+Tauri artifact layout:
+- raw release binaries are placed directly under `src-tauri/target/release/` (`timers` on Linux, `timers.exe` on Windows);
+- Linux package artifacts are placed under `src-tauri/target/release/bundle/<format>/`, for example `bundle/rpm/*.rpm` and `bundle/deb/*.deb`;
+- in the current Fedora environment, full `targets: "all"` packaging produced `.deb` and `.rpm` before failing at AppImage with `Read-only file system (os error 30)`, so Fedora package smoke should use `npm run tauri:build -- --bundles rpm` until AppImage is explicitly needed and validated.
+
+Cargo manifest note:
+- `tauri build` normalizes `tauri` and `tauri-build` dependency entries to include explicit `features = []`;
+- keep this normalized form committed to avoid dirty working trees after local Windows/Fedora builds;
+- `features = []` is not `default-features = false`, so it does not disable Tauri default features.
+
 Line count для source/test code under `src`, `src-tauri/src`, `src-tauri/capabilities` and `tests`, excluding generated schemas, lockfiles and build outputs: 3643 lines.
 
 ## 4) Current Development Prerequisites
@@ -100,6 +122,12 @@ sudo dnf install -y webkit2gtk4.1-devel libappindicator-gtk3-devel librsvg2-deve
 
 Эти `*-devel` packages являются development/build-time dependencies. Runtime application packages должны зависеть от соответствующих runtime libraries через выбранный Linux package format.
 
+Fedora RPM packaging command:
+
+```bash
+npm run tauri:build -- --bundles rpm
+```
+
 Windows 11 development prerequisites validated on 2026-07-01:
 - Node.js and npm are managed through Volta and follow `.nvmrc` / `docs/implementation/m0-preflight.md` (`node v24.15.0`, `npm 11.12.1`);
 - project JS dependencies are installed with `npm ci`;
@@ -112,8 +140,8 @@ Windows 11 development prerequisites validated on 2026-07-01:
 
 ## 5) Recommended Next Tasks
 
-1. Focus feature: реализовать profiles, session state machine, phase scheduler source и restore tests.
-2. Reminders feature: начать с one-time reminders и notification queue до recurrence.
-3. Sound experiments: развивать Web Audio API после стабилизации core time semantics.
-4. Добавить explicit restart/recovery E2E test для persisted active timers.
+1. Reminders feature: начать с one-time reminders и notification queue до recurrence.
+2. Добавить explicit restart/recovery E2E test для persisted active timers и focus sessions.
+3. Зафиксировать packaged smoke checklist для Linux RPM и Windows installer/raw binary.
+4. Sound experiments: развивать Web Audio API после стабилизации core time semantics.
 5. Заменить placeholder Tauri icon на полноценный app icon.

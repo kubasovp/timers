@@ -24,7 +24,9 @@ Canonical: docs/implementation/platform-lifecycle.md
 Native startup permissions:
 - `src-tauri/capabilities/default.json` must include `sql:default` for `load`/`close`/`select`;
 - it must also include `sql:allow-execute`, because migrations, repository writes and scheduler dispatch writes call SQL `execute`;
-- packaged app smoke must launch `src-tauri/target/release/timers.exe` or an installed bundle, not only Vite/browser mode, because browser fallback does not exercise native SQL permissions.
+- packaged app smoke must launch a native release binary or an installed bundle, not only Vite/browser mode, because browser fallback does not exercise native SQL permissions;
+- native raw binary paths are `src-tauri/target/release/timers` on Linux and `src-tauri/target/release/timers.exe` on Windows;
+- Fedora RPM artifacts are written under `src-tauri/target/release/bundle/rpm/`.
 
 ## 2) Readiness/Liveness semantics
 
