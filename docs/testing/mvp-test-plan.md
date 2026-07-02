@@ -17,6 +17,7 @@ Canonical: docs/testing/mvp-test-plan.md
 5. Daily local-floating reminder корректно обрабатывает timezone switch, где локальное время текущей даты уже прошло: grace fire или skip-to-tomorrow без дублей.
 6. Миграции schema v1 применяются на чистой и обновляемой БД.
 7. Packaged desktop app starts on Linux and Windows and reaches ready state with native SQLite enabled.
+8. Manual upgrade smoke preserves SQLite user data from version `N` to version `N+1`.
 
 ### P1 (желательно)
 
@@ -45,6 +46,7 @@ Canonical: docs/testing/mvp-test-plan.md
 - Integration: SQLite repos + scheduler loop + notifier adapter mock.
 - E2E smoke (desktop): запуск, активная сессия, reminder firing, restart recover.
 - Packaged smoke: build native artifacts, launch `src-tauri/target/release/timers` on Linux, `src-tauri/target/release/timers.exe` on Windows or an installed bundle artifact, then verify that UI does not show startup fallback such as `Failed to start Timers` and at least one timer/focus command reaches persisted native storage.
+- Upgrade smoke: install version `N`, create persisted timer/focus/reminder data, install version `N+1` over it, and verify that SQLite data remains in user app data rather than the install directory and is still visible/editable after restart.
 
 ## 5) Exit criteria для MVP
 
