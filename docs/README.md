@@ -1,4 +1,4 @@
-# Документация проекта Timers
+# Оглавление документации Timers
 
 ## Правило каноничности
 
@@ -74,7 +74,7 @@ HTML/CSS макет экранов для быстрых UX-итераций и 
 
 ## Testing
 
-План проверок и acceptance gates для MVP.
+План проверок и acceptance gates для версии 0.1.0.
 
 - `testing/mvp-test-plan.md`
 
