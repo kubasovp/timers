@@ -5,14 +5,16 @@ import type {
 } from "./notification-adapter";
 
 export class BrowserNotificationAdapter implements NotificationAdapter {
+  private userGesturePrimingInstalled = false;
+
+  constructor() {
+    this.installUserGesturePriming();
+  }
+
   async sendNotification(request: NotificationRequest): Promise<void> {
     if (!("Notification" in globalThis)) {
       console.info(`[notification:${request.id}] ${request.title}`, request.body ?? "");
       return;
-    }
-
-    if (Notification.permission === "default") {
-      await Notification.requestPermission();
     }
 
     if (Notification.permission === "granted") {
@@ -35,6 +37,16 @@ export class BrowserNotificationAdapter implements NotificationAdapter {
     }
 
     const context = new AudioContextCtor();
+
+    if (context.state === "suspended") {
+      await context.resume().catch(() => undefined);
+    }
+
+    if (context.state !== "running") {
+      await context.close().catch(() => undefined);
+      return;
+    }
+
     const oscillator = context.createOscillator();
     const gain = context.createGain();
 
@@ -48,9 +60,33 @@ export class BrowserNotificationAdapter implements NotificationAdapter {
     oscillator.stop(context.currentTime + 0.18);
 
     await new Promise<void>((resolve) => {
+      const timeoutId = setTimeout(() => {
+        void context.close().finally(resolve);
+      }, 350);
+
       oscillator.addEventListener("ended", () => {
+        clearTimeout(timeoutId);
         void context.close().finally(resolve);
       });
     });
+  }
+
+  private installUserGesturePriming(): void {
+    if (this.userGesturePrimingInstalled || !("window" in globalThis)) {
+      return;
+    }
+
+    this.userGesturePrimingInstalled = true;
+    const prime = (): void => {
+      if ("Notification" in globalThis && Notification.permission === "default") {
+        void Notification.requestPermission().catch(() => undefined);
+      }
+
+      window.removeEventListener("pointerdown", prime);
+      window.removeEventListener("keydown", prime);
+    };
+
+    window.addEventListener("pointerdown", prime, { once: true });
+    window.addEventListener("keydown", prime, { once: true });
   }
 }

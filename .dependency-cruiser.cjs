@@ -38,6 +38,14 @@ module.exports = {
       }
     },
     {
+      name: "reminders-does-not-import-other-feature-internals",
+      severity: "error",
+      from: { path: "^src/features/reminders" },
+      to: {
+        path: "^src/features/(?!reminders(?:/|$))[^/]+/.+"
+      }
+    },
+    {
       name: "scheduler-loop-does-not-import-feature-ui",
       severity: "error",
       from: { path: "^src/platform/scheduler-loop" },

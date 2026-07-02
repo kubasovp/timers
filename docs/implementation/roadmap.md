@@ -2,7 +2,7 @@
 
 Status: Draft  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-07-01  
+Last updated (UTC): 2026-07-02
 Scope: Порядок реализации MVP и контрольные точки качества  
 Canonical: docs/implementation/roadmap.md
 
@@ -130,6 +130,8 @@ Exit gate:
 - phase-level skip фиксируется отдельно от completed.
 
 ### M6. Reminders v1: one-time and queue
+
+Status: Implemented. See `docs/implementation/m6-status.md`.
 
 Цель: реализовать базовые reminders без recurrence complexity.
 

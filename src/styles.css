@@ -335,6 +335,18 @@ button:disabled {
   align-items: end;
 }
 
+.reminder-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.7fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.reminder-title-field,
+.reminder-message-field {
+  grid-column: 1 / -1;
+}
+
 .profile-name-field,
 .profile-form-actions {
   grid-column: 1 / -1;
@@ -358,6 +370,12 @@ button:disabled {
   border: 1px solid #d9e1e8;
   border-radius: 8px;
   background: #ffffff;
+}
+
+.reminder-message {
+  margin: 8px 0 0;
+  color: #405160;
+  overflow-wrap: anywhere;
 }
 
 .empty-state,
@@ -399,7 +417,8 @@ button:disabled {
   }
 
   .focus-session-main,
-  .profile-form {
+  .profile-form,
+  .reminder-form {
     grid-template-columns: 1fr;
   }
 

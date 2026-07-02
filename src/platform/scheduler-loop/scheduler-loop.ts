@@ -27,6 +27,7 @@ export class SchedulerLoop {
       notifications: NotificationAdapter;
       dispatchStore: SchedulerDispatchStore;
       cadenceMs?: number;
+      dispatchTimeoutMs?: number;
     }
   ) {}
 
@@ -120,12 +121,18 @@ export class SchedulerLoop {
     for (const channel of action.delivery.channels) {
       try {
         if (channel === "os_notification") {
-          await this.dependencies.notifications.sendNotification({
-            id: action.occurrence.idempotencyKey,
-            ...action.delivery.notification
-          });
+          await this.withDispatchTimeout(
+            this.dependencies.notifications.sendNotification({
+              id: action.occurrence.idempotencyKey,
+              ...action.delivery.notification
+            }),
+            channel
+          );
         } else {
-          await this.dependencies.notifications.playSound(action.delivery.sound ?? {});
+          await this.withDispatchTimeout(
+            this.dependencies.notifications.playSound(action.delivery.sound ?? {}),
+            channel
+          );
         }
 
         await this.dependencies.dispatchStore.recordDelivery(
@@ -148,5 +155,25 @@ export class SchedulerLoop {
     }
 
     report.actionsDispatched += 1;
+  }
+
+  private async withDispatchTimeout<T>(operation: Promise<T>, channel: string): Promise<T> {
+    const timeoutMs = this.dependencies.dispatchTimeoutMs ?? 3000;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+      return await Promise.race([
+        operation,
+        new Promise<never>((_resolve, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error(`scheduler.dispatch_timeout:${channel}`));
+          }, timeoutMs);
+        })
+      ]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
   }
 }

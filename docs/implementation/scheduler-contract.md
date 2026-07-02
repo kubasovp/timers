@@ -2,7 +2,7 @@
 
 Status: Draft (implementation contract)  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-07-01
+Last updated (UTC): 2026-07-02
 Scope: Поведение scheduler loop и runtime guarantees  
 Canonical: docs/implementation/scheduler-contract.md
 
@@ -128,6 +128,8 @@ Dedup для daily reminders выполняется по локальной ка
 - Повтор только для технических ошибок dispatch/storage.
 - Backoff: `1s, 5s, 15s` (до 3 попыток в MVP).
 - После исчерпания: `failed`, запись в `notification_delivery_log`, без бесконечных retry-циклов.
+- Ошибка или зависание одного delivery channel не должна оставлять scheduler loop в состоянии `in-flight` и блокировать последующие ticks/sources.
+- MVP baseline: каждый platform delivery call (`os_notification`, `sound`) должен быть bounded по времени; при превышении timeout канал записывается как `failed`, остальные queued actions продолжают dispatch.
 
 ## 5) Dedup / idempotency
 
@@ -161,6 +163,7 @@ Dedup для daily reminders выполняется по локальной ка
 
 - Любой crash во время обработки не должен ломать последующий restart/reconcile.
 - Recovery обязателен через пересчёт от persisted `next_fire_at_utc` и active state.
+- Platform adapter degradation is isolated from domain reconcile: если browser/native adapter не может показать notification или воспроизвести sound, feature-owned state всё равно должен перейти в due/completed согласно scheduler source, а dispatch failure фиксируется отдельно.
 
 ## 9) Решения для MVP
 

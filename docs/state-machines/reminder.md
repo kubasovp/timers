@@ -22,10 +22,13 @@ Canonical: docs/state-machines/reminder.md
 | snoozed | due_at_reached | due | повторный показ |
 | due | done | done | закрыто пользователем |
 | enabled | disable | disabled | выключение напоминания |
+| snoozed | disable | disabled | выключение отложенного напоминания |
 | disabled | enable | enabled | повторное включение |
 | enabled | delete | deleted | удаление |
 | due | delete | deleted | удаление |
 | snoozed | delete | deleted | удаление |
+| disabled | delete | deleted | удаление выключенного напоминания |
+| done | delete | deleted | удаление закрытого напоминания |
 
 ## Правила времени
 - В MVP one-time reminders работают как fixed UTC instant: после создания `one_time_fire_at_utc` не пересчитывается при смене timezone.

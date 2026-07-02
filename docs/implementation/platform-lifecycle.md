@@ -21,6 +21,13 @@ Canonical: docs/implementation/platform-lifecycle.md
 - custom timer repository и scheduler dispatch store используют SQLite;
 - вне Tauri web/dev runtime использует browser/localStorage adapters как fallback.
 
+Browser/dev fallback limitations:
+- web/dev режим нужен для быстрой UI/feature проверки, но не является полной моделью desktop runtime;
+- обычные браузеры могут запрещать `Notification.requestPermission()` вне короткого user gesture и блокировать `AudioContext` autoplay после reload/reopen вкладки;
+- browser notification/sound adapter должен деградировать без блокировки scheduler: reminder/timer state переходит по domain rules, а невозможность delivery не должна оставлять loop в `in-flight`;
+- текущая MVP composition root использует browser-style notification/sound adapter и в web/dev, и в Tauri runtime; если packaged smoke покажет те же browser limitations в WebView, нужен отдельный native adapter поверх Tauri notification/sound APIs;
+- packaged Tauri smoke обязателен для финальной проверки native notification/sound behavior, потому что browser fallback может требовать дополнительных permission/user gesture шагов.
+
 Native startup permissions:
 - `src-tauri/capabilities/default.json` must include `sql:default` for `load`/`close`/`select`;
 - it must also include `sql:allow-execute`, because migrations, repository writes and scheduler dispatch writes call SQL `execute`;

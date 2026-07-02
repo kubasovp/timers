@@ -17,6 +17,10 @@ import { BrowserFocusRepository } from "@/features/focus/persistence/browser-foc
 import { createDefaultFocusProfiles } from "@/features/focus/persistence/default-profiles";
 import { SqlFocusRepository } from "@/features/focus/persistence/sql-focus-repository";
 import type { FocusRepository } from "@/features/focus/ports";
+import { createReminderFeature } from "@/features/reminders";
+import { BrowserReminderRepository } from "@/features/reminders/persistence/browser-reminder-repository";
+import { SqlReminderRepository } from "@/features/reminders/persistence/sql-reminder-repository";
+import type { ReminderRepository } from "@/features/reminders/ports";
 import { SystemClock } from "@/platform/clock/system-clock";
 import { BrowserNotificationAdapter } from "@/platform/notifications/browser-notification-adapter";
 import {
@@ -31,7 +35,6 @@ import {
   openTauriSqliteDatabase,
   type TauriSqliteDatabaseConnection
 } from "@/platform/sqlite/tauri-sqlite-database";
-import { registerShellPlaceholders } from "./shell-placeholders";
 
 export interface AppRuntime {
   registries: AppRegistries;
@@ -47,6 +50,7 @@ interface RuntimeStorage {
   mode: AppRuntime["storageMode"];
   customTimerRepository: CustomTimerRepository;
   focusRepository: FocusRepository;
+  reminderRepository: ReminderRepository;
   schedulerDispatchStore: SchedulerDispatchStore;
   migrationRunner?: SqliteMigrationRunner;
   database?: TauriSqliteDatabaseConnection;
@@ -58,8 +62,6 @@ export async function createAppRuntime(): Promise<AppRuntime> {
   const clock = new SystemClock();
   const storage = await createRuntimeStorage();
 
-  registerShellPlaceholders(context);
-
   createFocusFeature({
     clock,
     repository: storage.focusRepository
@@ -68,6 +70,11 @@ export async function createAppRuntime(): Promise<AppRuntime> {
   createCustomTimerFeature({
     clock,
     repository: storage.customTimerRepository
+  }).register(context);
+
+  createReminderFeature({
+    clock,
+    repository: storage.reminderRepository
   }).register(context);
 
   registries.migrations.add(systemMigrations);
@@ -109,6 +116,7 @@ async function createRuntimeStorage(): Promise<RuntimeStorage> {
       mode: "browser",
       customTimerRepository: new BrowserCustomTimerRepository(),
       focusRepository: new BrowserFocusRepository(),
+      reminderRepository: new BrowserReminderRepository(),
       schedulerDispatchStore: new BrowserSchedulerDispatchStore()
     };
   }
@@ -119,6 +127,7 @@ async function createRuntimeStorage(): Promise<RuntimeStorage> {
     mode: "native-sqlite",
     customTimerRepository: new SqlCustomTimerRepository(database),
     focusRepository: new SqlFocusRepository(database),
+    reminderRepository: new SqlReminderRepository(database),
     schedulerDispatchStore: new SqlSchedulerDispatchStore(database),
     migrationRunner: new SqliteMigrationRunner(database),
     database
