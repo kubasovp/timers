@@ -3,5 +3,11 @@
   "identifier": "default",
   "description": "Default desktop permissions for Timers",
   "windows": ["main"],
-  "permissions": ["core:default", "notification:default", "os:default", "sql:default"]
+  "permissions": [
+    "core:default",
+    "notification:default",
+    "os:default",
+    "sql:default",
+    "sql:allow-execute"
+  ]
 }

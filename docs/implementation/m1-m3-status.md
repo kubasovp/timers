@@ -2,7 +2,7 @@
 
 Status: Accepted with follow-up items  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-07-01  
+Last updated (UTC): 2026-07-02  
 Scope: Фактическое состояние scaffold, runtime skeleton и custom timer vertical slice  
 Canonical: docs/implementation/m1-m3-status.md
 
@@ -106,7 +106,9 @@ Windows 11 development prerequisites validated on 2026-07-01:
 - Playwright browser binaries are installed with `npx playwright install chromium`;
 - Rust is installed through Rustup with `stable-x86_64-pc-windows-msvc` (`rustc 1.96.1`, `cargo 1.96.1` in the checked Windows environment);
 - native Tauri checks require Microsoft Visual Studio 2022 Build Tools with the C++ workload;
-- Windows Tauri resource generation requires `src-tauri/icons/icon.ico` in addition to the PNG icon.
+- Windows Tauri resource generation requires `src-tauri/icons/icon.ico` in addition to the PNG icon;
+- packaged Windows builds require explicit `bundle.icon` entries in `src-tauri/tauri.conf.json`;
+- native SQLite startup requires `sql:allow-execute` in `src-tauri/capabilities/default.json`; `sql:default` only covers `load`, `close` and `select`, while migrations and repositories use `execute`.
 
 ## 5) Recommended Next Tasks
 

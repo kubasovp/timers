@@ -2,7 +2,7 @@
 
 Status: Draft  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-07-01
+Last updated (UTC): 2026-07-02
 Scope: Acceptance gates для MVP реализации  
 Canonical: docs/testing/mvp-test-plan.md
 
@@ -16,6 +16,7 @@ Canonical: docs/testing/mvp-test-plan.md
 4. Misfire и dedup работают: нет дублей уведомлений.
 5. Daily local-floating reminder корректно обрабатывает timezone switch, где локальное время текущей даты уже прошло: grace fire или skip-to-tomorrow без дублей.
 6. Миграции schema v1 применяются на чистой и обновляемой БД.
+7. Packaged desktop app starts on Windows and reaches ready state with native SQLite enabled.
 
 ### P1 (желательно)
 
@@ -43,6 +44,7 @@ Canonical: docs/testing/mvp-test-plan.md
 - Unit: domain transitions + use-case handlers.
 - Integration: SQLite repos + scheduler loop + notifier adapter mock.
 - E2E smoke (desktop): запуск, активная сессия, reminder firing, restart recover.
+- Packaged smoke: `npm run tauri:build`, запуск `src-tauri/target/release/timers.exe` или installer artifact, проверка что UI не показывает startup fallback вроде `Failed to start Timers`.
 
 ## 5) Exit criteria для MVP
 

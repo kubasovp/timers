@@ -2,7 +2,7 @@
 
 Status: Draft (runtime/platform contract)  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-07-01
+Last updated (UTC): 2026-07-02
 Scope: Startup/Shutdown/Recovery semantics  
 Canonical: docs/implementation/platform-lifecycle.md
 
@@ -20,6 +20,11 @@ Canonical: docs/implementation/platform-lifecycle.md
 - platform migration runner применяет system и feature migrations из registry до mount UI;
 - custom timer repository и scheduler dispatch store используют SQLite;
 - вне Tauri web/dev runtime использует browser/localStorage adapters как fallback.
+
+Native startup permissions:
+- `src-tauri/capabilities/default.json` must include `sql:default` for `load`/`close`/`select`;
+- it must also include `sql:allow-execute`, because migrations, repository writes and scheduler dispatch writes call SQL `execute`;
+- packaged app smoke must launch `src-tauri/target/release/timers.exe` or an installed bundle, not only Vite/browser mode, because browser fallback does not exercise native SQL permissions.
 
 ## 2) Readiness/Liveness semantics
 
