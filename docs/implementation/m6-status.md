@@ -2,7 +2,7 @@
 
 Status: Implemented  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-07-02  
+Last updated (UTC): 2026-07-03
 Scope: One-time reminders, queue integration, snooze/done and one-time misfire handling
 
 ## Delivered
@@ -18,6 +18,8 @@ Scope: One-time reminders, queue integration, snooze/done and one-time misfire h
 - Добавлены browser, in-memory и SQL repositories.
 - Добавлены migrations `reminders.v1` для `active_reminders` и `reminder_occurrences`.
 - UI `/reminders` заменил shell placeholder и работает через command/query bus.
+- UI quick time по умолчанию остаётся rolling-relative, пока пользователь не отредактировал поле вручную; это предотвращает устаревший `now + 5m` при долгой открытой форме.
+- Отображение scheduled timestamps использует системную locale из Tauri `plugin-os`, с browser fallback на `navigator.language`.
 - Добавлены tests на state machine, use-cases, feature registration, due, snooze refire, missed/skipped, duplicate prevention и simultaneous queue behavior.
 - После browser smoke добавлен scheduler hardening: зависший notification/sound delivery channel завершается timeout-ошибкой и не блокирует последующие ticks/reminders.
 
@@ -39,6 +41,7 @@ Scope: One-time reminders, queue integration, snooze/done and one-time misfire h
 
 ## Browser Dev Notes
 
+- Native `datetime-local` rendering is controlled by the WebView/browser control. The app sets document `lang` and formats scheduled reminder text with the preferred locale, but exact picker chrome/12h-vs-24h rendering can still vary by WebView.
 - В Vite/browser режиме notification permission может быть запрошен только из пользовательского жеста браузера. Если permission не выдан, adapter пишет fallback в console.
 - Браузер может блокировать Web Audio autoplay после reload/reopen вкладки до первого пользовательского жеста. Это ограничение browser fallback, не доменного scheduler.
 - Scheduler loop не должен зависать из-за browser delivery limitations: reminders должны переходить в `due`, даже если звук или system notification не были доставлены.

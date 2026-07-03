@@ -1,4 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core";
+import { locale as getOsLocale } from "@tauri-apps/plugin-os";
 import { CommandBus } from "@/kernel/commands/command-registry";
 import { QueryBus } from "@/kernel/queries/query-registry";
 import {
@@ -43,6 +44,7 @@ export interface AppRuntime {
   schedulerLoop: SchedulerLoop;
   migrations: Migration[];
   storageMode: "browser" | "native-sqlite";
+  preferredLocale?: string;
   dispose(): Promise<void>;
 }
 
@@ -60,7 +62,10 @@ export async function createAppRuntime(): Promise<AppRuntime> {
   const registries = createAppRegistries();
   const context = createFeatureRegistrationContext(registries);
   const clock = new SystemClock();
-  const storage = await createRuntimeStorage();
+  const [storage, preferredLocale] = await Promise.all([
+    createRuntimeStorage(),
+    resolvePreferredLocale()
+  ]);
 
   createFocusFeature({
     clock,
@@ -103,11 +108,32 @@ export async function createAppRuntime(): Promise<AppRuntime> {
     schedulerLoop,
     migrations,
     storageMode: storage.mode,
+    preferredLocale,
     async dispose() {
       schedulerLoop.stop();
       await storage.database?.close();
     }
   };
+}
+
+async function resolvePreferredLocale(): Promise<string | undefined> {
+  if (isTauri()) {
+    try {
+      const osLocale = await getOsLocale();
+
+      if (osLocale) {
+        return osLocale;
+      }
+    } catch {
+      return browserLocale();
+    }
+  }
+
+  return browserLocale();
+}
+
+function browserLocale(): string | undefined {
+  return typeof navigator === "undefined" ? undefined : navigator.language;
 }
 
 async function createRuntimeStorage(): Promise<RuntimeStorage> {

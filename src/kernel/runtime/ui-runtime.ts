@@ -6,4 +6,5 @@ export const APP_RUNTIME_INJECTION_KEY = "app-runtime";
 export interface FeatureUiRuntime {
   commands: CommandBus;
   queries: QueryBus;
+  preferredLocale?: string;
 }

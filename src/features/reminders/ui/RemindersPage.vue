@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import {
+  localDateTimeInputToInstant,
+  toRelativeLocalDateTimeInputValue
+} from "@/shared/time/local-date-time";
+import {
   REMINDER_COMMANDS,
   REMINDER_QUERIES,
   type CreateOneTimeReminderPayload,
@@ -15,6 +19,8 @@ const fireAtLocal = ref("");
 const reminders = ref<ReminderView[]>([]);
 const statusLine = ref("");
 const statusIsError = ref(false);
+const quickFireAtSeconds = ref(5 * 60);
+const isFireAtRolling = ref(true);
 let refreshId: ReturnType<typeof setInterval> | undefined;
 
 const canCreate = computed(() => {
@@ -22,9 +28,10 @@ const canCreate = computed(() => {
 });
 
 onMounted(() => {
-  setRelativeFireAt(5 * 60);
+  updateRollingFireAt();
   void loadReminders();
   refreshId = setInterval(() => {
+    updateRollingFireAt();
     void loadReminders();
   }, 1000);
 });
@@ -44,7 +51,7 @@ async function loadReminders(): Promise<void> {
 }
 
 async function createReminder(): Promise<void> {
-  const fireAtUtc = localDateTimeToInstant(fireAtLocal.value);
+  const fireAtUtc = localDateTimeInputToInstant(fireAtLocal.value);
 
   if (!fireAtUtc) {
     showStatus("Reminder time is invalid.", true);
@@ -101,31 +108,25 @@ async function snoozeReminder(id: string, snoozeSeconds: number): Promise<void> 
 }
 
 function setRelativeFireAt(seconds: number): void {
-  const date = new Date(Date.now() + seconds * 1000);
-  fireAtLocal.value = toLocalInputValue(date);
+  quickFireAtSeconds.value = seconds;
+  isFireAtRolling.value = true;
+  updateRollingFireAt();
 }
 
-function localDateTimeToInstant(value: string): string | null {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return null;
+function updateRollingFireAt(): void {
+  if (!isFireAtRolling.value) {
+    return;
   }
 
-  return date.toISOString();
+  fireAtLocal.value = toRelativeLocalDateTimeInputValue(new Date(), quickFireAtSeconds.value);
 }
 
-function toLocalInputValue(date: Date): string {
-  const pad = (value: number) => value.toString().padStart(2, "0");
-  return [
-    date.getFullYear(),
-    pad(date.getMonth() + 1),
-    pad(date.getDate())
-  ].join("-") + `T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+function markFireAtEdited(): void {
+  isFireAtRolling.value = false;
 }
 
 function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(runtime.preferredLocale, {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -192,7 +193,13 @@ function showStatus(messageText: string, isError: boolean): void {
         </label>
         <label class="field">
           <span>Time</span>
-          <input v-model="fireAtLocal" name="reminder-time" type="datetime-local" />
+          <input
+            v-model="fireAtLocal"
+            name="reminder-time"
+            type="datetime-local"
+            @focus="markFireAtEdited"
+            @input="markFireAtEdited"
+          />
         </label>
         <button class="primary-button" type="submit" :disabled="!canCreate">Create</button>
       </form>

@@ -12,8 +12,13 @@ async function bootstrap(): Promise<void> {
 
   app.provide(APP_RUNTIME_INJECTION_KEY, {
     commands: runtime.commands,
-    queries: runtime.queries
+    queries: runtime.queries,
+    preferredLocale: runtime.preferredLocale
   });
+
+  if (runtime.preferredLocale) {
+    document.documentElement.lang = runtime.preferredLocale;
+  }
 
   app.mount("#app");
   runtime.schedulerLoop.start();
