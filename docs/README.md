@@ -68,6 +68,7 @@ HTML/CSS макет экранов для быстрых UX-итераций и 
 - `implementation/m4-status.md`
 - `implementation/m5-status.md`
 - `implementation/m6-status.md`
+- `implementation/m7-status.md`
 - `implementation/m7-roadmap.md`
 - `implementation/development-view.md`
 - `implementation/data-model-v1.md`

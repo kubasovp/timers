@@ -148,7 +148,7 @@ Exit gate:
 
 ### M7. Reminders v2: recurrence and time semantics
 
-Status: Planned. See `docs/implementation/m7-roadmap.md`.
+Status: Implemented. See `docs/implementation/m7-status.md` and `docs/implementation/m7-roadmap.md`.
 
 Цель: закрыть daily/interval reminders и ADR-002.
 

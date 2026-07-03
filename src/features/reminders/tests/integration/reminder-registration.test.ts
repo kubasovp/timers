@@ -24,8 +24,16 @@ describe("reminders feature registration", () => {
     expect(registries.routes.get("/reminders")?.featureId).toBe("reminders");
     expect(registries.navigation.list().map((item) => item.path)).toEqual(["/reminders"]);
     expect(registries.commands.list()).toContain(REMINDER_COMMANDS.CREATE_ONE_TIME);
+    expect(registries.commands.list()).toContain(REMINDER_COMMANDS.CREATE_DAILY);
+    expect(registries.commands.list()).toContain(REMINDER_COMMANDS.CREATE_INTERVAL);
     expect(registries.commands.list()).toContain(REMINDER_COMMANDS.SNOOZE);
     expect(registries.queries.list()).toContain(REMINDER_QUERIES.LIST);
+    expect(registries.settings.list()).toContainEqual({
+      key: "reminders.snoozePresetsSeconds",
+      featureId: "reminders",
+      schemaVersion: 1,
+      defaultValue: [300, 900]
+    });
     expect(registries.scheduler.listSources().map((source) => source.sourceType)).toEqual([
       "reminder"
     ]);

@@ -342,6 +342,19 @@ button:disabled {
   align-items: end;
 }
 
+.schedule-mode-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mode-button.active {
+  border-color: #2f6f73;
+  color: #ffffff;
+  background: #2f6f73;
+}
+
 .reminder-title-field,
 .reminder-message-field {
   grid-column: 1 / -1;
@@ -418,7 +431,8 @@ button:disabled {
 
   .focus-session-main,
   .profile-form,
-  .reminder-form {
+  .reminder-form,
+  .schedule-mode-row {
     grid-template-columns: 1fr;
   }
 

@@ -3,30 +3,46 @@ import {
   type SchedulerAction,
   type SchedulerSource
 } from "@/kernel/scheduler/scheduler-types";
-import { compareInstants, parseInstant, type Instant } from "@/shared/time/instant";
 import {
+  compareInstants,
+  isDue,
+  parseInstant,
+  type Instant
+} from "@/shared/time/instant";
+import {
+  markRecurringReminderDue,
   markReminderDue,
+  rescheduleReminder,
   skipMissedOneTimeReminder
 } from "../domain/reminder-state-machine";
 import type { Reminder, ReminderOccurrence } from "../domain/reminder-types";
+import {
+  getNextRecurringFireAt,
+  planReminderRecurrence,
+  type RecurrencePlannerDecision
+} from "../domain/recurrence-planner";
 import type { ReminderRepository } from "../ports";
 import { createFiredOccurrence } from "../use-cases/reminder-use-cases";
 
 const ONE_TIME_GRACE_WINDOW_SECONDS = 24 * 60 * 60;
 
 export class ReminderSchedulerSource implements SchedulerSource {
-  readonly id = "reminders.one-time-due";
+  readonly id = "reminders.due";
   readonly sourceType = "reminder";
 
-  constructor(private readonly repository: ReminderRepository) {}
+  constructor(
+    private readonly repository: ReminderRepository,
+    private readonly options: {
+      resolveCurrentTimeZone?: () => string;
+    } = {}
+  ) {}
 
-  async getNextFireAt(): Promise<Instant | null> {
+  async getNextFireAt(_now: Instant): Promise<Instant | null> {
     const reminders = await this.repository.listReminders();
     const next = reminders
       .filter(
         (reminder) =>
           reminder.isEnabled &&
-          reminder.scheduleType === "one_time" &&
           (reminder.status === "enabled" || reminder.status === "snoozed")
       )
       .sort((a, b) => compareInstants(a.nextFireAtUtc, b.nextFireAtUtc))[0];
@@ -35,54 +51,193 @@ export class ReminderSchedulerSource implements SchedulerSource {
   }
 
   async reconcile(now: Instant): Promise<SchedulerAction[]> {
-    const dueReminders = await this.repository.listDueReminders(now);
+    const activeReminders = (await this.repository.listReminders())
+      .filter(
+        (reminder) =>
+          reminder.isEnabled &&
+          (reminder.status === "enabled" || reminder.status === "snoozed")
+      )
+      .sort((a, b) => compareInstants(a.nextFireAtUtc, b.nextFireAtUtc));
     const actions: SchedulerAction[] = [];
+    const currentTimeZone = this.currentTimeZone();
 
-    for (const reminder of dueReminders) {
-      const scheduledForUtc = reminder.nextFireAtUtc;
-      const idempotencyKey = reminderIdempotencyKey(reminder, scheduledForUtc);
-      const existing = await this.repository.getOccurrenceByIdempotencyKey(idempotencyKey);
+    for (const reminder of activeReminders) {
+      if (reminder.scheduleType === "one_time") {
+        if (isDue(reminder.nextFireAtUtc, now)) {
+          const action = await this.reconcileOneTime(reminder, now);
 
-      if (existing && existing.status !== "failed") {
+          if (action) {
+            actions.push(action);
+          }
+        }
         continue;
       }
 
-      if (isOutsideGraceWindow(scheduledForUtc, now)) {
-        await this.skipMissed(reminder, scheduledForUtc, now, idempotencyKey);
+      if (reminder.status === "snoozed") {
+        if (isDue(reminder.nextFireAtUtc, now)) {
+          const action = await this.reconcileSnoozedRecurring(
+            reminder,
+            now,
+            currentTimeZone
+          );
+
+          if (action) {
+            actions.push(action);
+          }
+        }
         continue;
       }
 
-      const due = markReminderDue(reminder, now, scheduledForUtc);
+      const action = await this.reconcileEnabledRecurring(reminder, now, currentTimeZone);
 
-      if (!due.ok) {
-        continue;
+      if (action) {
+        actions.push(action);
       }
-
-      await this.repository.saveReminder(due.value);
-      await this.repository.saveOccurrence(
-        createFiredOccurrence({
-          id: reminderOccurrenceId(reminder, scheduledForUtc),
-          reminderId: reminder.id,
-          scheduledForUtc,
-          firedAtUtc: now,
-          idempotencyKey
-        })
-      );
-      await this.repository.appendHistoryEvent({
-        id: `${reminder.id}:reminder_fired:${scheduledForUtc}`,
-        reminderId: reminder.id,
-        eventType: "reminder_fired",
-        eventPayload: {
-          scheduledForUtc,
-          detectedAtUtc: now,
-          previousStatus: reminder.status
-        },
-        occurredAtUtc: now
-      });
-      actions.push(createReminderDueAction(reminder, scheduledForUtc, now));
     }
 
     return actions;
+  }
+
+  private async reconcileOneTime(
+    reminder: Reminder,
+    now: Instant
+  ): Promise<SchedulerAction | null> {
+    const scheduledForUtc = reminder.nextFireAtUtc;
+    const idempotencyKey = reminderIdempotencyKey(reminder, scheduledForUtc);
+    const existing = await this.repository.getOccurrenceByIdempotencyKey(idempotencyKey);
+
+    if (existing && existing.status !== "failed") {
+      return null;
+    }
+
+    if (isOutsideGraceWindow(scheduledForUtc, now)) {
+      await this.skipMissed(reminder, scheduledForUtc, now, idempotencyKey);
+      return null;
+    }
+
+    const due = markReminderDue(reminder, now, scheduledForUtc);
+
+    if (!due.ok) {
+      return null;
+    }
+
+    await this.repository.saveReminder(due.value);
+    await this.saveFiredOccurrence(reminder, scheduledForUtc, now, idempotencyKey);
+    await this.appendFiredHistory(reminder, scheduledForUtc, now);
+    return createReminderDueAction(reminder, scheduledForUtc, now);
+  }
+
+  private async reconcileEnabledRecurring(
+    reminder: Reminder,
+    now: Instant,
+    currentTimeZone: string
+  ): Promise<SchedulerAction | null> {
+    const latestOccurrence = await this.repository.getLatestOccurrence(reminder.id);
+    const decision = planReminderRecurrence(reminder, {
+      nowUtc: now,
+      currentTimeZone,
+      latestOccurrence
+    });
+
+    if (decision.kind === "invalid") {
+      return null;
+    }
+
+    if (decision.kind === "none") {
+      await this.saveRescheduleIfChanged(reminder, now, decision);
+      return null;
+    }
+
+    const idempotencyKey = reminderIdempotencyKey(reminder, decision.scheduledForUtc);
+    const existing = await this.repository.getOccurrenceByIdempotencyKey(idempotencyKey);
+
+    if (existing && existing.status !== "failed") {
+      await this.rescheduleRecurring(reminder, now, decision.nextFireAtUtc, currentTimeZone);
+      return null;
+    }
+
+    if (decision.kind === "skip") {
+      await this.skipRecurring(reminder, decision, now, idempotencyKey, currentTimeZone);
+      return null;
+    }
+
+    const due = markRecurringReminderDue(reminder, now, {
+      scheduledForUtc: decision.scheduledForUtc,
+      nextFireAtUtc: decision.nextFireAtUtc,
+      localDateKey: decision.localDateKey,
+      timezoneSnapshot: currentTimeZone
+    });
+
+    if (!due.ok) {
+      return null;
+    }
+
+    await this.repository.saveReminder(due.value);
+    await this.saveFiredOccurrence(
+      reminder,
+      decision.scheduledForUtc,
+      now,
+      idempotencyKey,
+      decision.localDateKey
+    );
+    await this.appendFiredHistory(reminder, decision.scheduledForUtc, now, {
+      localDateKey: decision.localDateKey,
+      nextFireAtUtc: decision.nextFireAtUtc,
+      scheduleType: reminder.scheduleType
+    });
+    return createReminderDueAction(reminder, decision.scheduledForUtc, now);
+  }
+
+  private async reconcileSnoozedRecurring(
+    reminder: Reminder,
+    now: Instant,
+    currentTimeZone: string
+  ): Promise<SchedulerAction | null> {
+    const latestOccurrence = await this.repository.getLatestOccurrence(reminder.id);
+    const scheduledForUtc = reminder.snoozedUntilUtc ?? reminder.nextFireAtUtc;
+    const idempotencyKey = reminderIdempotencyKey(reminder, scheduledForUtc);
+    const existing = await this.repository.getOccurrenceByIdempotencyKey(idempotencyKey);
+
+    if (existing && existing.status !== "failed") {
+      return null;
+    }
+
+    const nextFireAtUtc = getNextRecurringFireAt(reminder, {
+      nowUtc: now,
+      currentTimeZone,
+      latestOccurrence
+    });
+
+    if (!nextFireAtUtc) {
+      return null;
+    }
+
+    const due = markRecurringReminderDue(reminder, now, {
+      scheduledForUtc,
+      nextFireAtUtc,
+      localDateKey: latestOccurrence?.localDateKey,
+      timezoneSnapshot: currentTimeZone
+    });
+
+    if (!due.ok) {
+      return null;
+    }
+
+    await this.repository.saveReminder(due.value);
+    await this.saveFiredOccurrence(
+      reminder,
+      scheduledForUtc,
+      now,
+      idempotencyKey,
+      latestOccurrence?.localDateKey
+    );
+    await this.appendFiredHistory(reminder, scheduledForUtc, now, {
+      previousStatus: reminder.status,
+      snoozedUntilUtc: reminder.snoozedUntilUtc,
+      nextFireAtUtc,
+      scheduleType: reminder.scheduleType
+    });
+    return createReminderDueAction(reminder, scheduledForUtc, now);
   }
 
   private async skipMissed(
@@ -118,6 +273,118 @@ export class ReminderSchedulerSource implements SchedulerSource {
       },
       occurredAtUtc: now
     });
+  }
+
+  private async skipRecurring(
+    reminder: Reminder,
+    decision: Extract<RecurrencePlannerDecision, { kind: "skip" }>,
+    now: Instant,
+    idempotencyKey: string,
+    currentTimeZone: string
+  ): Promise<void> {
+    await this.rescheduleRecurring(reminder, now, decision.nextFireAtUtc, currentTimeZone);
+    await this.repository.saveOccurrence({
+      id: reminderOccurrenceId(reminder, decision.scheduledForUtc),
+      reminderId: reminder.id,
+      scheduledForUtc: decision.scheduledForUtc,
+      status: "skipped",
+      localDateKey: decision.localDateKey,
+      idempotencyKey
+    });
+    await this.repository.appendHistoryEvent({
+      id: `${reminder.id}:reminder_skipped:${decision.scheduledForUtc}`,
+      reminderId: reminder.id,
+      eventType: "reminder_skipped",
+      eventPayload: {
+        scheduledForUtc: decision.scheduledForUtc,
+        detectedAtUtc: now,
+        reason: decision.reason,
+        localDateKey: decision.localDateKey,
+        nextFireAtUtc: decision.nextFireAtUtc,
+        scheduleType: reminder.scheduleType
+      },
+      occurredAtUtc: now
+    });
+  }
+
+  private async saveRescheduleIfChanged(
+    reminder: Reminder,
+    now: Instant,
+    decision: Extract<RecurrencePlannerDecision, { kind: "none" }>
+  ): Promise<void> {
+    if (
+      reminder.nextFireAtUtc === decision.nextFireAtUtc &&
+      reminder.timezoneSnapshot === decision.timezoneSnapshot
+    ) {
+      return;
+    }
+
+    await this.rescheduleRecurring(
+      reminder,
+      now,
+      decision.nextFireAtUtc,
+      decision.timezoneSnapshot
+    );
+  }
+
+  private async rescheduleRecurring(
+    reminder: Reminder,
+    now: Instant,
+    nextFireAtUtc: Instant,
+    currentTimeZone?: string
+  ): Promise<void> {
+    const rescheduled = rescheduleReminder(reminder, now, nextFireAtUtc, currentTimeZone);
+
+    if (rescheduled.ok) {
+      await this.repository.saveReminder(rescheduled.value);
+    }
+  }
+
+  private async saveFiredOccurrence(
+    reminder: Reminder,
+    scheduledForUtc: Instant,
+    now: Instant,
+    idempotencyKey: string,
+    localDateKey?: string
+  ): Promise<void> {
+    await this.repository.saveOccurrence(
+      createFiredOccurrence({
+        id: reminderOccurrenceId(reminder, scheduledForUtc),
+        reminderId: reminder.id,
+        scheduledForUtc,
+        firedAtUtc: now,
+        idempotencyKey,
+        localDateKey
+      })
+    );
+  }
+
+  private async appendFiredHistory(
+    reminder: Reminder,
+    scheduledForUtc: Instant,
+    now: Instant,
+    extraPayload: Record<string, unknown> = {}
+  ): Promise<void> {
+    await this.repository.appendHistoryEvent({
+      id: `${reminder.id}:reminder_fired:${scheduledForUtc}`,
+      reminderId: reminder.id,
+      eventType: "reminder_fired",
+      eventPayload: {
+        scheduledForUtc,
+        detectedAtUtc: now,
+        previousStatus: reminder.status,
+        ...extraPayload
+      },
+      occurredAtUtc: now
+    });
+  }
+
+  private currentTimeZone(): string {
+    return (
+      this.options.resolveCurrentTimeZone?.() ??
+      Intl.DateTimeFormat().resolvedOptions().timeZone ??
+      "UTC"
+    );
   }
 }
 

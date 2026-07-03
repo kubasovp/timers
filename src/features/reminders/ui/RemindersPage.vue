@@ -7,6 +7,8 @@ import {
 import {
   REMINDER_COMMANDS,
   REMINDER_QUERIES,
+  type CreateDailyReminderPayload,
+  type CreateIntervalReminderPayload,
   type CreateOneTimeReminderPayload,
   type ReminderView
 } from "../use-cases/reminder-use-cases";
@@ -15,7 +17,10 @@ import { useFeatureRuntime } from "./use-feature-runtime";
 const runtime = useFeatureRuntime();
 const title = ref("");
 const message = ref("");
+const scheduleType = ref<ReminderView["scheduleType"]>("one_time");
 const fireAtLocal = ref("");
+const dailyTimeLocal = ref("10:00");
+const intervalMinutes = ref(60);
 const reminders = ref<ReminderView[]>([]);
 const statusLine = ref("");
 const statusIsError = ref(false);
@@ -24,7 +29,19 @@ const isFireAtRolling = ref(true);
 let refreshId: ReturnType<typeof setInterval> | undefined;
 
 const canCreate = computed(() => {
-  return title.value.trim().length > 0 && fireAtLocal.value.length > 0;
+  if (title.value.trim().length === 0) {
+    return false;
+  }
+
+  if (scheduleType.value === "daily") {
+    return dailyTimeLocal.value.length > 0;
+  }
+
+  if (scheduleType.value === "interval") {
+    return Number.isFinite(intervalMinutes.value) && intervalMinutes.value > 0;
+  }
+
+  return fireAtLocal.value.length > 0;
 });
 
 onMounted(() => {
@@ -51,6 +68,16 @@ async function loadReminders(): Promise<void> {
 }
 
 async function createReminder(): Promise<void> {
+  if (scheduleType.value === "daily") {
+    await createDailyReminder();
+    return;
+  }
+
+  if (scheduleType.value === "interval") {
+    await createIntervalReminder();
+    return;
+  }
+
   const fireAtUtc = localDateTimeInputToInstant(fireAtLocal.value);
 
   if (!fireAtUtc) {
@@ -76,6 +103,50 @@ async function createReminder(): Promise<void> {
   title.value = "";
   message.value = "";
   setRelativeFireAt(5 * 60);
+  showStatus("Reminder created.", false);
+  await loadReminders();
+}
+
+async function createDailyReminder(): Promise<void> {
+  const payload: CreateDailyReminderPayload = {
+    title: title.value,
+    message: message.value,
+    dailyTimeLocal: dailyTimeLocal.value
+  };
+  const result = await runtime.commands.execute<CreateDailyReminderPayload, ReminderView>(
+    REMINDER_COMMANDS.CREATE_DAILY,
+    payload
+  );
+
+  if (!result.ok) {
+    showStatus(result.error.message, true);
+    return;
+  }
+
+  title.value = "";
+  message.value = "";
+  showStatus("Reminder created.", false);
+  await loadReminders();
+}
+
+async function createIntervalReminder(): Promise<void> {
+  const payload: CreateIntervalReminderPayload = {
+    title: title.value,
+    message: message.value,
+    intervalSeconds: Math.floor(intervalMinutes.value * 60)
+  };
+  const result = await runtime.commands.execute<CreateIntervalReminderPayload, ReminderView>(
+    REMINDER_COMMANDS.CREATE_INTERVAL,
+    payload
+  );
+
+  if (!result.ok) {
+    showStatus(result.error.message, true);
+    return;
+  }
+
+  title.value = "";
+  message.value = "";
   showStatus("Reminder created.", false);
   await loadReminders();
 }
@@ -113,8 +184,12 @@ function setRelativeFireAt(seconds: number): void {
   updateRollingFireAt();
 }
 
+function setIntervalPreset(minutes: number): void {
+  intervalMinutes.value = minutes;
+}
+
 function updateRollingFireAt(): void {
-  if (!isFireAtRolling.value) {
+  if (!isFireAtRolling.value || scheduleType.value !== "one_time") {
     return;
   }
 
@@ -163,6 +238,14 @@ function statusLabel(reminder: ReminderView): string {
   return reminder.status;
 }
 
+function nextLabel(reminder: ReminderView): string {
+  if (reminder.status === "done" || reminder.status === "deleted") {
+    return formatDateTime(reminder.fireAtUtc);
+  }
+
+  return formatDateTime(reminder.nextFireAtUtc);
+}
+
 function showStatus(messageText: string, isError: boolean): void {
   statusLine.value = messageText;
   statusIsError.value = isError;
@@ -174,7 +257,7 @@ function showStatus(messageText: string, isError: boolean): void {
     <header class="page-header">
       <div>
         <h1 class="page-title">Reminders</h1>
-        <p class="page-subtitle">One-time reminders with snooze, done and restart recovery.</p>
+        <p class="page-subtitle">One-time, daily and interval reminders with snooze recovery.</p>
       </div>
       <p class="status-line" :class="{ error: statusIsError }" role="status">
         {{ statusLine }}
@@ -183,6 +266,32 @@ function showStatus(messageText: string, isError: boolean): void {
 
     <div class="surface">
       <form class="section reminder-form" @submit.prevent="createReminder">
+        <div class="schedule-mode-row" role="group" aria-label="Reminder type">
+          <button
+            class="secondary-button mode-button"
+            :class="{ active: scheduleType === 'one_time' }"
+            type="button"
+            @click="scheduleType = 'one_time'"
+          >
+            One-time
+          </button>
+          <button
+            class="secondary-button mode-button"
+            :class="{ active: scheduleType === 'daily' }"
+            type="button"
+            @click="scheduleType = 'daily'"
+          >
+            Daily
+          </button>
+          <button
+            class="secondary-button mode-button"
+            :class="{ active: scheduleType === 'interval' }"
+            type="button"
+            @click="scheduleType = 'interval'"
+          >
+            Interval
+          </button>
+        </div>
         <label class="field reminder-title-field">
           <span>Title</span>
           <input v-model="title" name="reminder-title" autocomplete="off" placeholder="Reminder title" />
@@ -191,7 +300,7 @@ function showStatus(messageText: string, isError: boolean): void {
           <span>Message</span>
           <input v-model="message" name="reminder-message" autocomplete="off" placeholder="Optional" />
         </label>
-        <label class="field">
+        <label v-if="scheduleType === 'one_time'" class="field">
           <span>Time</span>
           <input
             v-model="fireAtLocal"
@@ -201,10 +310,28 @@ function showStatus(messageText: string, isError: boolean): void {
             @input="markFireAtEdited"
           />
         </label>
+        <label v-if="scheduleType === 'daily'" class="field">
+          <span>Daily time</span>
+          <input v-model="dailyTimeLocal" name="reminder-daily-time" type="time" />
+        </label>
+        <label v-if="scheduleType === 'interval'" class="field">
+          <span>Interval minutes</span>
+          <input
+            v-model.number="intervalMinutes"
+            name="reminder-interval-minutes"
+            type="number"
+            min="1"
+            step="1"
+          />
+        </label>
         <button class="primary-button" type="submit" :disabled="!canCreate">Create</button>
       </form>
 
-      <div class="section preset-row" aria-label="Reminder quick times">
+      <div
+        v-if="scheduleType === 'one_time'"
+        class="section preset-row"
+        aria-label="Reminder quick times"
+      >
         <button class="secondary-button" type="button" @click="setRelativeFireAt(5 * 60)">
           5m
         </button>
@@ -212,6 +339,21 @@ function showStatus(messageText: string, isError: boolean): void {
           15m
         </button>
         <button class="secondary-button" type="button" @click="setRelativeFireAt(60 * 60)">
+          1h
+        </button>
+      </div>
+      <div
+        v-if="scheduleType === 'interval'"
+        class="section preset-row"
+        aria-label="Reminder interval presets"
+      >
+        <button class="secondary-button" type="button" @click="setIntervalPreset(5)">
+          5m
+        </button>
+        <button class="secondary-button" type="button" @click="setIntervalPreset(15)">
+          15m
+        </button>
+        <button class="secondary-button" type="button" @click="setIntervalPreset(60)">
           1h
         </button>
       </div>
@@ -227,8 +369,9 @@ function showStatus(messageText: string, isError: boolean): void {
           <div class="timer-main">
             <p class="timer-title">{{ reminder.title }}</p>
             <div class="timer-meta">
+              <span>{{ reminder.scheduleSummary }}</span>
               <span>{{ statusLabel(reminder) }}</span>
-              <span>{{ formatDateTime(reminder.fireAtUtc) }}</span>
+              <span>{{ nextLabel(reminder) }}</span>
             </div>
             <p v-if="reminder.message" class="reminder-message">{{ reminder.message }}</p>
           </div>

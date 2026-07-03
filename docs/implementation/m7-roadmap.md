@@ -1,10 +1,33 @@
 # M7 Roadmap — Reminders Recurrence and Time Semantics
 
-Status: Draft  
+Status: Implemented  
 Owner: github.com/kubasovp  
 Last updated (UTC): 2026-07-03  
 Scope: План реализации M7, test matrix и порядок снижения риска для recurring reminders  
 Canonical: docs/implementation/m7-roadmap.md
+
+## 0) Implementation Result
+
+M7 is implemented in the application code and verified by automated tests.
+
+Delivered:
+- pure recurrence planner for daily local-floating and interval rules;
+- explicit IANA timezone test harness for planner scenarios without changing OS timezone;
+- daily DST spring-forward/fall-back behavior from ADR-002;
+- local-date dedup for daily reminders through `last_fired_local_date`;
+- interval elapsed-UTC cadence from `interval_anchor_at_utc`;
+- scheduler integration for enabled and snoozed recurring reminders;
+- recurring `Done` returns the rule to `enabled`, while one-time `Done` remains terminal;
+- recurring `Snooze` refires the current logical occurrence with an explicit snooze occurrence key;
+- UI create controls for one-time, daily and interval reminders;
+- default snooze preset setting definition `reminders.snoozePresetsSeconds`.
+
+Verification:
+- `npm run test`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run build`
+- `npm run test:e2e`
 
 ## 1) Boundaries
 

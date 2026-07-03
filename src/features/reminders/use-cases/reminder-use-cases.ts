@@ -2,15 +2,23 @@ import { appError } from "@/kernel/errors/app-error";
 import { DefaultIdGenerator, type IdGenerator } from "@/shared/id/create-id";
 import { err, ok, type Result } from "@/shared/result/result";
 import type { Clock } from "@/shared/time/clock";
-import { secondsUntil, type Instant } from "@/shared/time/instant";
+import { addSeconds, secondsUntil, type Instant } from "@/shared/time/instant";
 import {
+  acknowledgeRecurringReminder,
   acknowledgeReminder,
+  createDailyReminder,
+  createIntervalReminder,
   createOneTimeReminder,
   deleteReminder,
   disableReminder,
   enableReminder,
   snoozeReminder
 } from "../domain/reminder-state-machine";
+import {
+  getNextFutureDailyFireAt,
+  getNextRecurringFireAt,
+  parseDailyTimeLocal
+} from "../domain/recurrence-planner";
 import type {
   Reminder,
   ReminderHistoryEvent,
@@ -20,6 +28,8 @@ import type { ReminderRepository } from "../ports";
 
 export const REMINDER_COMMANDS = {
   CREATE_ONE_TIME: "reminders.createOneTime",
+  CREATE_DAILY: "reminders.createDaily",
+  CREATE_INTERVAL: "reminders.createInterval",
   ENABLE: "reminders.enable",
   DISABLE: "reminders.disable",
   DELETE: "reminders.delete",
@@ -35,6 +45,18 @@ export interface CreateOneTimeReminderPayload {
   title: string;
   message?: string;
   fireAtUtc: Instant;
+}
+
+export interface CreateDailyReminderPayload {
+  title: string;
+  message?: string;
+  dailyTimeLocal: string;
+}
+
+export interface CreateIntervalReminderPayload {
+  title: string;
+  message?: string;
+  intervalSeconds: number;
 }
 
 export interface ReminderIdPayload {
@@ -53,6 +75,9 @@ export interface ReminderView {
   scheduleType: Reminder["scheduleType"];
   fireAtUtc: string;
   nextFireAtUtc: string;
+  dailyTimeLocal?: string;
+  intervalSeconds?: number;
+  scheduleSummary: string;
   snoozedUntilUtc?: string;
   secondsUntilNext: number;
   isEnabled: boolean;
@@ -60,6 +85,8 @@ export interface ReminderView {
 
 export interface ReminderUseCases {
   createOneTime(payload: CreateOneTimeReminderPayload): Promise<Result<ReminderView>>;
+  createDaily(payload: CreateDailyReminderPayload): Promise<Result<ReminderView>>;
+  createInterval(payload: CreateIntervalReminderPayload): Promise<Result<ReminderView>>;
   enable(payload: ReminderIdPayload): Promise<Result<ReminderView>>;
   disable(payload: ReminderIdPayload): Promise<Result<ReminderView>>;
   delete(payload: ReminderIdPayload): Promise<Result<ReminderView>>;
@@ -68,7 +95,8 @@ export interface ReminderUseCases {
   list(): Promise<Result<ReminderView[]>>;
 }
 
-const DEFAULT_SNOOZE_SECONDS = 5 * 60;
+export const DEFAULT_SNOOZE_PRESET_SECONDS = [5 * 60, 15 * 60] as const;
+const DEFAULT_SNOOZE_SECONDS = DEFAULT_SNOOZE_PRESET_SECONDS[0];
 
 export function createReminderUseCases(dependencies: {
   repository: ReminderRepository;
@@ -104,6 +132,104 @@ export function createReminderUseCases(dependencies: {
       return ok(toReminderView(reminder.value, now));
     },
 
+    async createDaily(payload) {
+      const now = dependencies.clock.now();
+      const timeZone = getTimezoneSnapshot() ?? "UTC";
+
+      if (!parseDailyTimeLocal(payload.dailyTimeLocal)) {
+        return err(
+          appError({
+            code: "reminders.invalid_daily_time",
+            message: "Daily reminder time must use HH:mm format.",
+            category: "validation",
+            details: { value: payload.dailyTimeLocal }
+          })
+        );
+      }
+
+      const nextFireAtUtc = getNextFutureDailyFireAt(payload.dailyTimeLocal, now, timeZone);
+
+      if (!nextFireAtUtc) {
+        return err(
+          appError({
+            code: "reminders.invalid_daily_time",
+            message: "Daily reminder time could not be scheduled.",
+            category: "validation",
+            details: { value: payload.dailyTimeLocal }
+          })
+        );
+      }
+
+      const reminder = createDailyReminder({
+        id: ids.nextId(),
+        now,
+        title: payload.title,
+        message: payload.message,
+        dailyTimeLocal: payload.dailyTimeLocal,
+        nextFireAtUtc,
+        timezoneSnapshot: timeZone
+      });
+
+      if (!reminder.ok) {
+        return reminder;
+      }
+
+      await dependencies.repository.saveReminder(reminder.value);
+      await dependencies.repository.appendHistoryEvent(
+        historyEvent(ids, reminder.value, "reminder_created", now, {
+          scheduleType: reminder.value.scheduleType,
+          dailyTimeLocal: reminder.value.dailyTimeLocal,
+          nextFireAtUtc: reminder.value.nextFireAtUtc,
+          timezoneSnapshot: timeZone
+        })
+      );
+
+      return ok(toReminderView(reminder.value, now));
+    },
+
+    async createInterval(payload) {
+      const now = dependencies.clock.now();
+      const intervalSeconds = Math.floor(payload.intervalSeconds);
+
+      if (!Number.isInteger(intervalSeconds) || intervalSeconds <= 0) {
+        return err(
+          appError({
+            code: "reminders.invalid_interval",
+            message: "Interval duration must be greater than zero.",
+            category: "validation",
+            details: { value: payload.intervalSeconds }
+          })
+        );
+      }
+
+      const nextFireAtUtc = addSeconds(now, intervalSeconds);
+      const reminder = createIntervalReminder({
+        id: ids.nextId(),
+        now,
+        title: payload.title,
+        message: payload.message,
+        intervalSeconds,
+        intervalAnchorAtUtc: now,
+        nextFireAtUtc
+      });
+
+      if (!reminder.ok) {
+        return reminder;
+      }
+
+      await dependencies.repository.saveReminder(reminder.value);
+      await dependencies.repository.appendHistoryEvent(
+        historyEvent(ids, reminder.value, "reminder_created", now, {
+          scheduleType: reminder.value.scheduleType,
+          intervalSeconds: reminder.value.intervalSeconds,
+          intervalAnchorAtUtc: reminder.value.intervalAnchorAtUtc,
+          nextFireAtUtc: reminder.value.nextFireAtUtc
+        })
+      );
+
+      return ok(toReminderView(reminder.value, now));
+    },
+
     async enable(payload) {
       return mutateReminder(dependencies, ids, payload.id, "reminder_enabled", enableReminder);
     },
@@ -124,17 +250,32 @@ export function createReminderUseCases(dependencies: {
         return reminderNotFound(payload.id);
       }
 
-      const acknowledged = acknowledgeReminder(reminder, now);
+      const latestOccurrence = await dependencies.repository.getLatestOccurrence(payload.id);
+      const isRecurring = reminder.scheduleType !== "one_time";
+      const timeZone = getTimezoneSnapshot() ?? reminder.timezoneSnapshot ?? "UTC";
+      const nextRecurringFireAt = isRecurring
+        ? getNextRecurringFireAt(reminder, {
+            nowUtc: now,
+            currentTimeZone: timeZone,
+            latestOccurrence
+          })
+        : null;
+      const acknowledged = isRecurring
+        ? acknowledgeRecurringReminder(
+            reminder,
+            now,
+            nextRecurringFireAt ?? reminder.nextFireAtUtc,
+            timeZone
+          )
+        : acknowledgeReminder(reminder, now);
 
       if (!acknowledged.ok) {
         return acknowledged;
       }
 
-      const occurrence = await dependencies.repository.getLatestOccurrence(payload.id);
-
-      if (occurrence) {
+      if (latestOccurrence) {
         await dependencies.repository.saveOccurrence({
-          ...occurrence,
+          ...latestOccurrence,
           status: "done",
           acknowledgedAtUtc: now
         });
@@ -143,7 +284,9 @@ export function createReminderUseCases(dependencies: {
       await dependencies.repository.saveReminder(acknowledged.value);
       await dependencies.repository.appendHistoryEvent(
         historyEvent(ids, acknowledged.value, "reminder_done", now, {
-          previousStatus: reminder.status
+          previousStatus: reminder.status,
+          scheduleType: reminder.scheduleType,
+          nextFireAtUtc: acknowledged.value.nextFireAtUtc
         })
       );
 
@@ -206,6 +349,9 @@ export function toReminderView(reminder: Reminder, now: Instant): ReminderView {
     scheduleType: reminder.scheduleType,
     fireAtUtc: reminder.oneTimeFireAtUtc ?? reminder.nextFireAtUtc,
     nextFireAtUtc: reminder.nextFireAtUtc,
+    dailyTimeLocal: reminder.dailyTimeLocal,
+    intervalSeconds: reminder.intervalSeconds,
+    scheduleSummary: scheduleSummary(reminder),
     snoozedUntilUtc: reminder.snoozedUntilUtc,
     secondsUntilNext:
       reminder.status === "enabled" || reminder.status === "snoozed"
@@ -213,6 +359,29 @@ export function toReminderView(reminder: Reminder, now: Instant): ReminderView {
         : 0,
     isEnabled: reminder.isEnabled
   };
+}
+
+function scheduleSummary(reminder: Reminder): string {
+  if (reminder.scheduleType === "daily") {
+    return `daily at ${reminder.dailyTimeLocal}`;
+  }
+
+  if (reminder.scheduleType === "interval") {
+    const seconds = reminder.intervalSeconds ?? 0;
+    const minutes = Math.round(seconds / 60);
+
+    if (seconds % 3600 === 0) {
+      return `every ${seconds / 3600}h`;
+    }
+
+    if (seconds % 60 === 0) {
+      return `every ${minutes}m`;
+    }
+
+    return `every ${seconds}s`;
+  }
+
+  return "one-time";
 }
 
 async function mutateReminder(
@@ -283,6 +452,7 @@ export function createFiredOccurrence(input: {
   scheduledForUtc: Instant;
   firedAtUtc: Instant;
   idempotencyKey: string;
+  localDateKey?: string;
 }): ReminderOccurrence {
   return {
     id: input.id,
@@ -290,6 +460,7 @@ export function createFiredOccurrence(input: {
     scheduledForUtc: input.scheduledForUtc,
     status: "fired",
     firedAtUtc: input.firedAtUtc,
+    localDateKey: input.localDateKey,
     idempotencyKey: input.idempotencyKey
   };
 }
