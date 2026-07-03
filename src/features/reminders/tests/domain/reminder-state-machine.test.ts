@@ -10,6 +10,8 @@ import {
   enableReminder,
   markRecurringReminderDue,
   markReminderDue,
+  recordIntervalReminderFire,
+  resumeIntervalReminder,
   snoozeReminder
 } from "../../domain/reminder-state-machine";
 
@@ -148,5 +150,59 @@ describe("reminder state machine", () => {
     const disabled = disableReminder(snoozed.value, "2026-07-02T11:01:00.000Z");
     expect(disabled.ok && disabled.value.status).toBe("disabled");
     expect(disabled.ok && disabled.value.isEnabled).toBe(false);
+  });
+
+  it("records interval fires without waiting for acknowledgement", () => {
+    const created = createIntervalReminder({
+      id: "reminder-1",
+      now: "2026-07-02T10:00:00.000Z",
+      title: "Move",
+      intervalSeconds: 3600,
+      intervalAnchorAtUtc: "2026-07-02T10:00:00.000Z",
+      nextFireAtUtc: "2026-07-02T11:00:00.000Z"
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const fired = recordIntervalReminderFire(created.value, "2026-07-02T11:00:00.000Z", {
+      scheduledForUtc: "2026-07-02T11:00:00.000Z",
+      nextFireAtUtc: "2026-07-02T12:00:00.000Z"
+    });
+
+    expect(fired.ok && fired.value.status).toBe("enabled");
+    expect(fired.ok && fired.value.isEnabled).toBe(true);
+    expect(fired.ok && fired.value.nextFireAtUtc).toBe("2026-07-02T12:00:00.000Z");
+    expect(fired.ok && fired.value.lastFiredAtUtc).toBe("2026-07-02T11:00:00.000Z");
+  });
+
+  it("can stop and resume legacy due interval reminders", () => {
+    const created = createIntervalReminder({
+      id: "reminder-1",
+      now: "2026-07-02T10:00:00.000Z",
+      title: "Move",
+      intervalSeconds: 3600,
+      intervalAnchorAtUtc: "2026-07-02T10:00:00.000Z",
+      nextFireAtUtc: "2026-07-02T11:00:00.000Z"
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const due = markRecurringReminderDue(created.value, "2026-07-02T11:00:00.000Z", {
+      scheduledForUtc: "2026-07-02T11:00:00.000Z",
+      nextFireAtUtc: "2026-07-02T12:00:00.000Z"
+    });
+    expect(due.ok).toBe(true);
+    if (!due.ok) return;
+
+    const stopped = disableReminder(due.value, "2026-07-02T11:01:00.000Z");
+    expect(stopped.ok && stopped.value.status).toBe("disabled");
+
+    const resumed = resumeIntervalReminder(
+      due.value,
+      "2026-07-02T11:01:00.000Z",
+      "2026-07-02T12:00:00.000Z"
+    );
+    expect(resumed.ok && resumed.value.status).toBe("enabled");
+    expect(resumed.ok && resumed.value.nextFireAtUtc).toBe("2026-07-02T12:00:00.000Z");
   });
 });

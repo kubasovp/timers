@@ -14,10 +14,11 @@ Scope: Daily local-floating reminders, interval reminders, recurrence planner an
 - DST fall-back ambiguous local times choose the first occurrence and deduplicate by local calendar date.
 - Interval reminders use elapsed UTC cadence from `intervalAnchorAtUtc`, avoiding wall-clock drift through DST.
 - Scheduler creates at most one user-visible alert per reminder per reconcile and records skipped old recurring misfires.
-- Recurring `Done` closes the current occurrence and returns the rule to `enabled`; one-time `Done` remains terminal.
-- Recurring `Snooze` refires the current logical occurrence and then restores the next regular recurrence.
+- Daily recurring `Done` closes the current occurrence and returns the rule to `enabled`; one-time `Done` remains terminal.
+- Interval reminders alert autonomously, stay `enabled`, and recalculate the next regular occurrence without waiting for `Done`.
+- Recurring `Snooze` refires the current logical occurrence and then restores the next regular recurrence for command-level compatibility.
 - Added commands `reminders.createDaily` and `reminders.createInterval`.
-- UI supports one-time, daily and interval reminder creation and shows schedule summaries.
+- UI supports one-time, daily and interval reminder creation, shows schedule summaries, and exposes `Stop` for active interval reminders.
 - Registered default snooze preset setting `reminders.snoozePresetsSeconds`.
 
 ## Exit Gate
@@ -25,6 +26,7 @@ Scope: Daily local-floating reminders, interval reminders, recurrence planner an
 - Daily reminder fires once per local calendar date.
 - Timezone switch recalculates `nextFireAtUtc` from persisted rule/state.
 - Interval reminders fire the latest due occurrence after sleep/restart without catch-up storms.
+- Interval reminders continue to the next occurrence without user acknowledgement.
 - Repeated reconcile does not create duplicate recurring alerts.
 - One-time M6 behavior remains covered and unchanged.
 

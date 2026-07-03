@@ -221,7 +221,7 @@ describe("reminder scheduler integration", () => {
     expect(notifications.notifications).toHaveLength(0);
   });
 
-  it("fires the latest due interval after sleep without catch-up storms", async () => {
+  it("fires interval reminders repeatedly without waiting for acknowledgement", async () => {
     const clock = new FakeClock("2026-07-03T11:05:00.000Z");
     const repository = new InMemoryReminderRepository();
     await repository.saveReminder(intervalReminder());
@@ -229,16 +229,27 @@ describe("reminder scheduler integration", () => {
     const { loop, notifications } = createLoop(repository, clock);
     const first = await loop.reconcileOnce();
     const second = await loop.reconcileOnce();
-    const reminder = await repository.getReminder("reminder-1");
-    const occurrences = await repository.listOccurrences("reminder-1");
+    const reminderAfterFirstFire = await repository.getReminder("reminder-1");
 
     expect(first.actionsDispatched).toBe(1);
     expect(second.actionsCreated).toBe(0);
-    expect(reminder?.status).toBe("due");
-    expect(reminder?.nextFireAtUtc).toBe("2026-07-03T12:00:00.000Z");
-    expect(occurrences).toHaveLength(1);
-    expect(occurrences[0]?.scheduledForUtc).toBe("2026-07-03T11:00:00.000Z");
-    expect(notifications.notifications).toHaveLength(1);
+    expect(reminderAfterFirstFire?.status).toBe("enabled");
+    expect(reminderAfterFirstFire?.nextFireAtUtc).toBe("2026-07-03T12:00:00.000Z");
+
+    clock.set("2026-07-03T12:00:00.000Z");
+    const nextInterval = await loop.reconcileOnce();
+    const reminderAfterSecondFire = await repository.getReminder("reminder-1");
+    const occurrences = await repository.listOccurrences("reminder-1");
+
+    expect(nextInterval.actionsDispatched).toBe(1);
+    expect(reminderAfterSecondFire?.status).toBe("enabled");
+    expect(reminderAfterSecondFire?.nextFireAtUtc).toBe("2026-07-03T13:00:00.000Z");
+    expect(occurrences).toHaveLength(2);
+    expect(occurrences.map((occurrence) => occurrence.scheduledForUtc)).toEqual([
+      "2026-07-03T11:00:00.000Z",
+      "2026-07-03T12:00:00.000Z"
+    ]);
+    expect(notifications.notifications).toHaveLength(2);
   });
 
   it("skips old interval misfires outside the interval grace window", async () => {
@@ -268,13 +279,48 @@ describe("reminder scheduler integration", () => {
     expect(notifications.notifications).toHaveLength(0);
   });
 
-  it("refires snoozed recurring occurrences with an explicit snooze occurrence key", async () => {
-    const clock = new FakeClock("2026-07-03T08:00:00.000Z");
+  it("resumes legacy due interval reminders without requiring Done", async () => {
+    const clock = new FakeClock("2026-07-03T09:05:00.000Z");
     const repository = new InMemoryReminderRepository();
-    await repository.saveReminder(intervalReminder());
+    await repository.saveReminder(
+      intervalReminder({
+        status: "due",
+        nextFireAtUtc: "2026-07-03T10:00:00.000Z",
+        lastFiredAtUtc: "2026-07-03T09:00:00.000Z",
+        version: 2
+      })
+    );
+    await repository.saveOccurrence({
+      id: "reminder-1:reminder_due:2026-07-03T09:00:00.000Z",
+      reminderId: "reminder-1",
+      scheduledForUtc: "2026-07-03T09:00:00.000Z",
+      status: "fired",
+      firedAtUtc: "2026-07-03T09:00:00.000Z",
+      idempotencyKey: "reminder:reminder-1:2026-07-03T09:00:00.000Z:user_alert"
+    });
 
     const { loop, notifications } = createLoop(repository, clock);
-    clock.set("2026-07-03T09:00:00.000Z");
+    const report = await loop.reconcileOnce();
+    const reminder = await repository.getReminder("reminder-1");
+
+    expect(report.actionsDispatched).toBe(0);
+    expect(reminder?.status).toBe("enabled");
+    expect(reminder?.nextFireAtUtc).toBe("2026-07-03T10:00:00.000Z");
+    expect(notifications.notifications).toHaveLength(0);
+  });
+
+  it("refires snoozed daily occurrences with an explicit snooze occurrence key", async () => {
+    const clock = new FakeClock("2026-07-03T10:00:00.000Z");
+    const repository = new InMemoryReminderRepository();
+    await repository.saveReminder(
+      dailyReminder({
+        dailyTimeLocal: "10:00",
+        nextFireAtUtc: "2026-07-03T10:00:00.000Z",
+        timezoneSnapshot: "UTC"
+      })
+    );
+
+    const { loop, notifications } = createLoop(repository, clock, "UTC");
     await loop.reconcileOnce();
 
     const useCases = createReminderUseCases({
@@ -285,7 +331,7 @@ describe("reminder scheduler integration", () => {
     const snoozed = await useCases.snooze({ id: "reminder-1", snoozeSeconds: 120 });
     expect(snoozed.ok && snoozed.value.status).toBe("snoozed");
 
-    clock.set("2026-07-03T09:02:00.000Z");
+    clock.set("2026-07-03T10:02:00.000Z");
     const refire = await loop.reconcileOnce();
     const occurrences = await repository.listOccurrences("reminder-1");
     const reminder = await repository.getReminder("reminder-1");
@@ -293,9 +339,9 @@ describe("reminder scheduler integration", () => {
     expect(refire.actionsDispatched).toBe(1);
     expect(notifications.notifications).toHaveLength(2);
     expect(occurrences.map((occurrence) => occurrence.status)).toEqual(["snoozed", "fired"]);
-    expect(occurrences[1]?.scheduledForUtc).toBe("2026-07-03T09:02:00.000Z");
+    expect(occurrences[1]?.scheduledForUtc).toBe("2026-07-03T10:02:00.000Z");
     expect(reminder?.status).toBe("due");
-    expect(reminder?.nextFireAtUtc).toBe("2026-07-03T10:00:00.000Z");
+    expect(reminder?.nextFireAtUtc).toBe("2026-07-04T10:00:00.000Z");
   });
 });
 

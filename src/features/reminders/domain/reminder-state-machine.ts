@@ -232,6 +232,78 @@ export function markRecurringReminderDue(
   });
 }
 
+export function recordIntervalReminderFire(
+  reminder: Reminder,
+  now: Instant,
+  input: MarkRecurringReminderDueInput
+): Result<Reminder> {
+  const transition = ensureStatus(
+    reminder,
+    ["enabled", "snoozed", "due"],
+    "interval_fire"
+  );
+
+  if (!transition.ok) {
+    return transition;
+  }
+
+  if (reminder.scheduleType !== "interval") {
+    return err(
+      appError({
+        code: "reminders.invalid_transition",
+        message: "Only interval reminders can be recorded as autonomous fires.",
+        category: "domain"
+      })
+    );
+  }
+
+  return ok({
+    ...reminder,
+    status: "enabled",
+    nextFireAtUtc: input.nextFireAtUtc,
+    timezoneSnapshot: input.timezoneSnapshot ?? reminder.timezoneSnapshot,
+    lastFiredAtUtc: now,
+    snoozedUntilUtc: undefined,
+    isEnabled: true,
+    updatedAtUtc: now,
+    version: reminder.version + 1
+  });
+}
+
+export function resumeIntervalReminder(
+  reminder: Reminder,
+  now: Instant,
+  nextFireAtUtc: Instant,
+  timezoneSnapshot?: string
+): Result<Reminder> {
+  const transition = ensureStatus(reminder, ["due"], "resume_interval");
+
+  if (!transition.ok) {
+    return transition;
+  }
+
+  if (reminder.scheduleType !== "interval") {
+    return err(
+      appError({
+        code: "reminders.invalid_transition",
+        message: "Only interval reminders can resume from due without acknowledgement.",
+        category: "domain"
+      })
+    );
+  }
+
+  return ok({
+    ...reminder,
+    status: "enabled",
+    nextFireAtUtc,
+    timezoneSnapshot: timezoneSnapshot ?? reminder.timezoneSnapshot,
+    snoozedUntilUtc: undefined,
+    isEnabled: true,
+    updatedAtUtc: now,
+    version: reminder.version + 1
+  });
+}
+
 export function rescheduleReminder(
   reminder: Reminder,
   now: Instant,
@@ -338,7 +410,11 @@ export function acknowledgeRecurringReminder(
 }
 
 export function disableReminder(reminder: Reminder, now: Instant): Result<Reminder> {
-  const transition = ensureStatus(reminder, ["enabled", "snoozed"], "disable");
+  const allowedStatuses: ReminderStatus[] =
+    reminder.scheduleType === "interval"
+      ? ["enabled", "snoozed", "due"]
+      : ["enabled", "snoozed"];
+  const transition = ensureStatus(reminder, allowedStatuses, "disable");
 
   if (!transition.ok) {
     return transition;

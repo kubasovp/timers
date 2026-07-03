@@ -246,6 +246,27 @@ function nextLabel(reminder: ReminderView): string {
   return formatDateTime(reminder.nextFireAtUtc);
 }
 
+function canDisableReminder(reminder: ReminderView): boolean {
+  return reminder.scheduleType !== "interval" && reminder.status === "enabled";
+}
+
+function canStopIntervalReminder(reminder: ReminderView): boolean {
+  return (
+    reminder.scheduleType === "interval" &&
+    (reminder.status === "enabled" ||
+      reminder.status === "snoozed" ||
+      reminder.status === "due")
+  );
+}
+
+function canDisableSnoozedReminder(reminder: ReminderView): boolean {
+  return reminder.scheduleType !== "interval" && reminder.status === "snoozed";
+}
+
+function canAcknowledgeReminder(reminder: ReminderView): boolean {
+  return reminder.scheduleType !== "interval" && reminder.status === "due";
+}
+
 function showStatus(messageText: string, isError: boolean): void {
   statusLine.value = messageText;
   statusIsError.value = isError;
@@ -257,7 +278,7 @@ function showStatus(messageText: string, isError: boolean): void {
     <header class="page-header">
       <div>
         <h1 class="page-title">Reminders</h1>
-        <p class="page-subtitle">One-time, daily and interval reminders with snooze recovery.</p>
+        <p class="page-subtitle">One-time, daily and interval reminders.</p>
       </div>
       <p class="status-line" :class="{ error: statusIsError }" role="status">
         {{ statusLine }}
@@ -378,7 +399,7 @@ function showStatus(messageText: string, isError: boolean): void {
 
           <div class="timer-actions">
             <button
-              v-if="reminder.status === 'enabled'"
+              v-if="canDisableReminder(reminder)"
               class="secondary-button"
               type="button"
               @click="runReminderCommand(REMINDER_COMMANDS.DISABLE, reminder.id)"
@@ -394,7 +415,15 @@ function showStatus(messageText: string, isError: boolean): void {
               Enable
             </button>
             <button
-              v-if="reminder.status === 'snoozed'"
+              v-if="canStopIntervalReminder(reminder)"
+              class="secondary-button"
+              type="button"
+              @click="runReminderCommand(REMINDER_COMMANDS.DISABLE, reminder.id)"
+            >
+              Stop
+            </button>
+            <button
+              v-if="canDisableSnoozedReminder(reminder)"
               class="secondary-button"
               type="button"
               @click="runReminderCommand(REMINDER_COMMANDS.DISABLE, reminder.id)"
@@ -402,7 +431,7 @@ function showStatus(messageText: string, isError: boolean): void {
               Disable
             </button>
             <button
-              v-if="reminder.status === 'due'"
+              v-if="canAcknowledgeReminder(reminder)"
               class="primary-button"
               type="button"
               @click="runReminderCommand(REMINDER_COMMANDS.DONE, reminder.id)"
@@ -410,7 +439,7 @@ function showStatus(messageText: string, isError: boolean): void {
               Done
             </button>
             <button
-              v-if="reminder.status === 'due'"
+              v-if="canAcknowledgeReminder(reminder)"
               class="secondary-button"
               type="button"
               @click="snoozeReminder(reminder.id, 5 * 60)"
@@ -418,7 +447,7 @@ function showStatus(messageText: string, isError: boolean): void {
               Snooze 5m
             </button>
             <button
-              v-if="reminder.status === 'due'"
+              v-if="canAcknowledgeReminder(reminder)"
               class="secondary-button"
               type="button"
               @click="snoozeReminder(reminder.id, 15 * 60)"

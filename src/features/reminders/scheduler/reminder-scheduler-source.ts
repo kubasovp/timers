@@ -12,7 +12,9 @@ import {
 import {
   markRecurringReminderDue,
   markReminderDue,
+  recordIntervalReminderFire,
   rescheduleReminder,
+  resumeIntervalReminder,
   skipMissedOneTimeReminder
 } from "../domain/reminder-state-machine";
 import type { Reminder, ReminderOccurrence } from "../domain/reminder-types";
@@ -40,11 +42,7 @@ export class ReminderSchedulerSource implements SchedulerSource {
   async getNextFireAt(_now: Instant): Promise<Instant | null> {
     const reminders = await this.repository.listReminders();
     const next = reminders
-      .filter(
-        (reminder) =>
-          reminder.isEnabled &&
-          (reminder.status === "enabled" || reminder.status === "snoozed")
-      )
+      .filter(isSchedulerActiveReminder)
       .sort((a, b) => compareInstants(a.nextFireAtUtc, b.nextFireAtUtc))[0];
 
     return next?.nextFireAtUtc ?? null;
@@ -52,11 +50,7 @@ export class ReminderSchedulerSource implements SchedulerSource {
 
   async reconcile(now: Instant): Promise<SchedulerAction[]> {
     const activeReminders = (await this.repository.listReminders())
-      .filter(
-        (reminder) =>
-          reminder.isEnabled &&
-          (reminder.status === "enabled" || reminder.status === "snoozed")
-      )
+      .filter(isSchedulerActiveReminder)
       .sort((a, b) => compareInstants(a.nextFireAtUtc, b.nextFireAtUtc));
     const actions: SchedulerAction[] = [];
     const currentTimeZone = this.currentTimeZone();
@@ -161,18 +155,25 @@ export class ReminderSchedulerSource implements SchedulerSource {
       return null;
     }
 
-    const due = markRecurringReminderDue(reminder, now, {
-      scheduledForUtc: decision.scheduledForUtc,
-      nextFireAtUtc: decision.nextFireAtUtc,
-      localDateKey: decision.localDateKey,
-      timezoneSnapshot: currentTimeZone
-    });
+    const fired =
+      reminder.scheduleType === "interval"
+        ? recordIntervalReminderFire(reminder, now, {
+            scheduledForUtc: decision.scheduledForUtc,
+            nextFireAtUtc: decision.nextFireAtUtc,
+            timezoneSnapshot: currentTimeZone
+          })
+        : markRecurringReminderDue(reminder, now, {
+            scheduledForUtc: decision.scheduledForUtc,
+            nextFireAtUtc: decision.nextFireAtUtc,
+            localDateKey: decision.localDateKey,
+            timezoneSnapshot: currentTimeZone
+          });
 
-    if (!due.ok) {
+    if (!fired.ok) {
       return null;
     }
 
-    await this.repository.saveReminder(due.value);
+    await this.repository.saveReminder(fired.value);
     await this.saveFiredOccurrence(
       reminder,
       decision.scheduledForUtc,
@@ -212,18 +213,25 @@ export class ReminderSchedulerSource implements SchedulerSource {
       return null;
     }
 
-    const due = markRecurringReminderDue(reminder, now, {
-      scheduledForUtc,
-      nextFireAtUtc,
-      localDateKey: latestOccurrence?.localDateKey,
-      timezoneSnapshot: currentTimeZone
-    });
+    const fired =
+      reminder.scheduleType === "interval"
+        ? recordIntervalReminderFire(reminder, now, {
+            scheduledForUtc,
+            nextFireAtUtc,
+            timezoneSnapshot: currentTimeZone
+          })
+        : markRecurringReminderDue(reminder, now, {
+            scheduledForUtc,
+            nextFireAtUtc,
+            localDateKey: latestOccurrence?.localDateKey,
+            timezoneSnapshot: currentTimeZone
+          });
 
-    if (!due.ok) {
+    if (!fired.ok) {
       return null;
     }
 
-    await this.repository.saveReminder(due.value);
+    await this.repository.saveReminder(fired.value);
     await this.saveFiredOccurrence(
       reminder,
       scheduledForUtc,
@@ -312,7 +320,11 @@ export class ReminderSchedulerSource implements SchedulerSource {
     now: Instant,
     decision: Extract<RecurrencePlannerDecision, { kind: "none" }>
   ): Promise<void> {
+    const shouldResumeDueInterval =
+      reminder.scheduleType === "interval" && reminder.status === "due";
+
     if (
+      !shouldResumeDueInterval &&
       reminder.nextFireAtUtc === decision.nextFireAtUtc &&
       reminder.timezoneSnapshot === decision.timezoneSnapshot
     ) {
@@ -333,7 +345,10 @@ export class ReminderSchedulerSource implements SchedulerSource {
     nextFireAtUtc: Instant,
     currentTimeZone?: string
   ): Promise<void> {
-    const rescheduled = rescheduleReminder(reminder, now, nextFireAtUtc, currentTimeZone);
+    const rescheduled =
+      reminder.scheduleType === "interval" && reminder.status === "due"
+        ? resumeIntervalReminder(reminder, now, nextFireAtUtc, currentTimeZone)
+        : rescheduleReminder(reminder, now, nextFireAtUtc, currentTimeZone);
 
     if (rescheduled.ok) {
       await this.repository.saveReminder(rescheduled.value);
@@ -386,6 +401,15 @@ export class ReminderSchedulerSource implements SchedulerSource {
       "UTC"
     );
   }
+}
+
+function isSchedulerActiveReminder(reminder: Reminder): boolean {
+  return (
+    reminder.isEnabled &&
+    (reminder.status === "enabled" ||
+      reminder.status === "snoozed" ||
+      (reminder.scheduleType === "interval" && reminder.status === "due"))
+  );
 }
 
 function createReminderDueAction(

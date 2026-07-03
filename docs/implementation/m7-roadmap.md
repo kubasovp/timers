@@ -17,8 +17,9 @@ Delivered:
 - local-date dedup for daily reminders through `last_fired_local_date`;
 - interval elapsed-UTC cadence from `interval_anchor_at_utc`;
 - scheduler integration for enabled and snoozed recurring reminders;
-- recurring `Done` returns the rule to `enabled`, while one-time `Done` remains terminal;
-- recurring `Snooze` refires the current logical occurrence with an explicit snooze occurrence key;
+- daily recurring `Done` returns the rule to `enabled`, while one-time `Done` remains terminal;
+- interval alerts stay active and reschedule automatically until explicitly stopped;
+- recurring `Snooze` refires the current logical occurrence with an explicit snooze occurrence key for command-level compatibility;
 - UI create controls for one-time, daily and interval reminders;
 - default snooze preset setting definition `reminders.snoozePresetsSeconds`.
 
@@ -139,7 +140,8 @@ Exit gate:
 
 Required behavior:
 - one-time `Done` остаётся terminal: reminder становится `done`, `isEnabled=false`;
-- recurring `Done` закрывает текущий occurrence и возвращает reminder в `enabled` с пересчитанным будущим `nextFireAtUtc`;
+- daily recurring `Done` закрывает текущий occurrence и возвращает reminder в `enabled` с пересчитанным будущим `nextFireAtUtc`;
+- interval occurrence при alert записывается и сразу возвращает правило в `enabled` с будущим `nextFireAtUtc`;
 - recurring `Snooze` переносит текущий occurrence, а не создаёт новую logical daily/interval дату;
 - `Disable` выключает всё правило, включая snoozed occurrence.
 
@@ -208,9 +210,9 @@ Baseline unless stated otherwise:
 | ID | Scenario | Inputs | Expected behavior | Must prove |
 |---|---|---|---|---|
 | R01 | Daily occurrence acknowledged with Done | reminder is `due`, schedule type `daily` | current occurrence becomes `done`, reminder returns to `enabled`, next is future daily candidate | Recurring Done is not terminal |
-| R02 | Interval occurrence acknowledged with Done | reminder is `due`, schedule type `interval` | current occurrence becomes `done`, reminder returns to `enabled`, next is future interval candidate | One-time Done semantics do not leak into recurring rules |
+| R02 | Interval occurrence fires | reminder is `enabled`, schedule type `interval` | current occurrence is recorded, alert is delivered, reminder stays `enabled`, next is future interval candidate | Interval does not wait for acknowledgement |
 | R03 | Daily occurrence snoozed | due daily occurrence snoozed 5m | reminder is `snoozed`, `nextFireAtUtc = snoozedUntilUtc`, logical local date preserved | Snooze does not create second daily occurrence |
-| R04 | Snoozed recurring occurrence fires | snoozed daily/interval reaches snooze time | same logical occurrence fires again with stable idempotency key or explicit snooze key policy | Snooze refire is deterministic |
+| R04 | Snoozed recurring occurrence fires | snoozed daily/interval reaches snooze time | same logical occurrence fires again with stable idempotency key or explicit snooze key policy; interval returns to `enabled` | Snooze refire is deterministic |
 | R05 | Disable snoozed recurring reminder | reminder is `snoozed` | reminder becomes `disabled`, no recurrence or snooze alert fires | Disable owns the whole rule |
 
 ## 5) Verification Plan
