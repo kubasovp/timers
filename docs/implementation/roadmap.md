@@ -2,7 +2,7 @@
 
 Status: Draft  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-07-02
+Last updated (UTC): 2026-07-03
 Scope: Порядок реализации MVP и контрольные точки качества  
 Canonical: docs/implementation/roadmap.md
 
@@ -148,9 +148,12 @@ Exit gate:
 
 ### M7. Reminders v2: recurrence and time semantics
 
+Status: Planned. See `docs/implementation/m7-roadmap.md`.
+
 Цель: закрыть daily/interval reminders и ADR-002.
 
 Deliverables:
+- pure recurrence planner with explicit timezone test harness;
 - daily `local-floating` schedule rules;
 - interval schedule rules;
 - recalculation of `next_fire_at_utc`;
