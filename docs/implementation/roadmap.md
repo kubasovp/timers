@@ -184,6 +184,9 @@ Exit gate:
 - нет high-severity дефектов по recovery/time semantics;
 - MVP можно собрать и запустить на целевых платформах.
 
+Post-M8 UI polish backlog:
+- отключить accidental text selection (`user-select`) на buttons, controls, app chrome и других не-текстовых interactive surfaces; оставить выделение там, где пользователь реально работает с текстовым содержимым.
+
 ## 3) Near-term backlog after M3
 
 1. UI iteration: закрыто. Shell layout использует header во всю ширину и три равные колонки Focus/Timers/Reminders без sidebar navigation.

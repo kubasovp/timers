@@ -342,6 +342,10 @@ button:disabled {
   align-items: end;
 }
 
+.reminder-form .field {
+  min-width: 0;
+}
+
 .schedule-mode-row {
   grid-column: 1 / -1;
   display: grid;
@@ -356,7 +360,9 @@ button:disabled {
 }
 
 .reminder-title-field,
-.reminder-message-field {
+.reminder-message-field,
+.reminder-form > .field:not(.reminder-title-field):not(.reminder-message-field),
+.reminder-form > .primary-button {
   grid-column: 1 / -1;
 }
 

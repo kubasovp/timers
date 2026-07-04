@@ -50,6 +50,10 @@ Canonical: docs/testing/mvp-test-plan.md
 
 Current automated coverage note:
 - Browser E2E includes reload recovery for active custom timer and focus session. Packaged/native restart and upgrade smoke remain M8 manual checks.
+- Browser E2E also covers suppression of the WebView default context menu.
+
+Current manual smoke note:
+- Windows MSI upgrade smoke from `0.1.0` to temporary `0.1.1` passed on 2026-07-04: active focus session, active custom timer, completed timer, and one-time/daily/interval reminders remained visible after upgrade. Follow-up packaged Windows smoke with temporary `0.1.2`/`0.1.3` confirmed the release binary uses the `Windows GUI` subsystem and no longer opens a console window.
 
 ## 5) Exit criteria для MVP
 

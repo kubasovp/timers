@@ -5,6 +5,8 @@ import { APP_RUNTIME_INJECTION_KEY } from "@/kernel/runtime/ui-runtime";
 import { createAppRuntime } from "@/platform/bootstrap/runtime";
 
 async function bootstrap(): Promise<void> {
+  disableDefaultContextMenu();
+
   const runtime = await createAppRuntime();
   await runtime.schedulerLoop.reconcileOnce();
 
@@ -37,3 +39,9 @@ void bootstrap().catch((error) => {
     root.textContent = "Failed to start Timers.";
   }
 });
+
+function disableDefaultContextMenu(): void {
+  document.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+  });
+}
