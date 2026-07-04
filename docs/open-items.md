@@ -19,6 +19,7 @@ Canonical: docs/open-items.md
 - минимальный контракт автообновления (post-MVP ready baseline);
 - политика телеметрии/приватности (MVP baseline + post-MVP);
 - M0 preflight: toolchain, TypeScript 7 RC policy, dependency-cruiser, platform matrix, data-model/scheduler clarifications.
+- TypeScript 7 RC side-by-side compatibility: `typecheck:ts7` uses `typescript@rc` with `vue-tsc` and remains non-primary for MVP.
 
 ## Decision Index
 
@@ -50,7 +51,6 @@ Canonical: docs/open-items.md
 Следующие вопросы не блокируют старт первого vertical slice, но требуют отдельной фиксации по мере реализации:
 
 - Решить, нужны ли materialized read models для часто используемых таймеров или достаточно runtime-агрегации из history.
-- Проверить TypeScript 7 RC (`typescript@rc`) как side-by-side `typecheck:ts7` после scaffold и решить, можно ли продвигать его в primary CI.
 
 ## Next review checkpoint
 

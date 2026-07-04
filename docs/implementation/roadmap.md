@@ -191,7 +191,7 @@ Exit gate:
 3. Focus feature: закрыто. Реализованы profiles, session state machine, phase scheduler source и restore tests.
 4. Reminders v1: начать с one-time reminders, queue, snooze/done и dedup.
 5. Sound experiments: расширять Web Audio API после стабилизации core time semantics.
-6. Добавить side-by-side `typecheck:ts7` и собрать фактическую совместимость TypeScript 7 RC.
+6. TypeScript 7 RC side-by-side check: закрыто. `typecheck:ts7` запускает `typescript@rc` через `vue-tsc`; RC остаётся non-primary до отдельного решения о продвижении в CI.
 
 ## 4) Recommended task granularity
 

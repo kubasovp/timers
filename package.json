@@ -10,7 +10,7 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "typecheck": "vue-tsc -b",
-    "typecheck:ts7": "npx --yes --package typescript@rc tsc --noEmit --project tsconfig.app.json",
+    "typecheck:ts7": "npx --yes --package typescript@rc --package vue-tsc@3.3.6 vue-tsc -b tsconfig.app.json",
     "lint": "depcruise src --config .dependency-cruiser.cjs",
     "test": "vitest run",
     "test:watch": "vitest",

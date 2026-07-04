@@ -1,8 +1,8 @@
 # M1-M3 Implementation Status
 
-Status: Accepted with follow-up items  
+Status: Accepted
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-07-02  
+Last updated (UTC): 2026-07-04
 Scope: Фактическое состояние scaffold, runtime skeleton и custom timer vertical slice  
 Canonical: docs/implementation/m1-m3-status.md
 
@@ -72,8 +72,7 @@ Status: Implemented; native runtime persistence follow-up closed after M4.
 - unit, integration and E2E smoke tests.
 
 Follow-up:
-- добавить explicit restart/recovery E2E test для persisted active timers;
-- заменить placeholder Tauri icon на полноценный app icon.
+- нет открытых M1-M3 follow-up items; оставшиеся release checks отслеживаются в M8.
 
 ## 3) Verification
 
@@ -102,6 +101,16 @@ Tauri artifact layout:
 - raw release binaries are placed directly under `src-tauri/target/release/` (`timers` on Linux, `timers.exe` on Windows);
 - Linux package artifacts are placed under `src-tauri/target/release/bundle/<format>/`, for example `bundle/rpm/*.rpm` and `bundle/deb/*.deb`;
 - in the current Fedora environment, full `targets: "all"` packaging produced `.deb` and `.rpm` before failing at AppImage with `Read-only file system (os error 30)`, so Fedora package smoke should use `npm run tauri:build -- --bundles rpm` until AppImage is explicitly needed and validated.
+
+Pre-M8 recovery and Windows packaged smoke on 2026-07-04:
+
+| Check | Result |
+|---|---|
+| `npm run test:e2e` | Passed: browser smoke includes active custom timer and focus session reload recovery |
+| Windows `npm run tauri:build` | Passed: `src-tauri/target/release/timers.exe`, MSI and NSIS artifacts built |
+| Windows raw packaged startup | Passed: `timers.exe` process started and responded |
+| Windows native SQLite startup | Passed: `timers.db` exists in app data with migrations `system.v1`, `custom-timer.v1`, `focus.v1`, `reminders.v1` |
+| App icon | Placeholder icon replaced with Timers-specific PNG/ICO assets |
 
 Cargo manifest note:
 - `tauri build` normalizes `tauri` and `tauri-build` dependency entries to include explicit `features = []`;
@@ -140,8 +149,6 @@ Windows 11 development prerequisites validated on 2026-07-01:
 
 ## 5) Recommended Next Tasks
 
-1. Reminders feature: начать с one-time reminders и notification queue до recurrence.
-2. Добавить explicit restart/recovery E2E test для persisted active timers и focus sessions.
-3. Зафиксировать packaged smoke checklist для Linux RPM и Windows installer/raw binary.
-4. Sound experiments: развивать Web Audio API после стабилизации core time semantics.
-5. Заменить placeholder Tauri icon на полноценный app icon.
+1. Complete M8 packaged smoke on Linux RPM and Windows installer/raw binary.
+2. Run manual upgrade smoke for persisted SQLite user data.
+3. Sound experiments: развивать Web Audio API после стабилизации core time semantics.

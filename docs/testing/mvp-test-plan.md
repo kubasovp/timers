@@ -48,6 +48,9 @@ Canonical: docs/testing/mvp-test-plan.md
 - Packaged smoke: build native artifacts, launch `src-tauri/target/release/timers` on Linux, `src-tauri/target/release/timers.exe` on Windows or an installed bundle artifact, then verify that UI does not show startup fallback such as `Failed to start Timers` and at least one timer/focus command reaches persisted native storage.
 - Upgrade smoke: install version `N`, create persisted timer/focus/reminder data, install version `N+1` over it, and verify that SQLite data remains in user app data rather than the install directory and is still visible/editable after restart.
 
+Current automated coverage note:
+- Browser E2E includes reload recovery for active custom timer and focus session. Packaged/native restart and upgrade smoke remain M8 manual checks.
+
 ## 5) Exit criteria для MVP
 
 MVP готов к релиз-кандидату, если:

@@ -33,12 +33,12 @@ Verified on 2026-07-01:
 
 M4 сам по себе не закрывал storage hardening и не заменяет M5/M6 work.
 
-Остаются follow-up items из M3:
-- добавить explicit restart/recovery E2E test для persisted active timers;
-- заменить placeholder Tauri icon на полноценный app icon.
+Открытых follow-up items из M3 не осталось.
 
 Закрыто после M4:
 - UI shell iteration: header во всю ширину и три равные колонки Focus/Timers/Reminders без sidebar navigation;
 - storage hardening: Tauri runtime использует SQLite connection, migration runner, SQL custom timer repository и SQL scheduler dispatch store.
+- explicit restart/recovery E2E: browser smoke теперь проверяет reload recovery для active custom timer и focus session.
+- placeholder Tauri icon заменён на Timers-specific PNG/ICO assets.
 
 Следующий milestone: M5 Focus feature.
