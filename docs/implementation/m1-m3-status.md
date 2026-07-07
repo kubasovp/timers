@@ -149,6 +149,6 @@ Windows 11 development prerequisites validated on 2026-07-01:
 
 ## 5) Recommended Next Tasks
 
-1. Complete M8 packaged smoke on Linux RPM and Windows installer/raw binary.
-2. Run manual upgrade smoke for persisted SQLite user data.
+1. M8 packaged smoke on Linux RPM and Windows installer/raw binary: closed by `docs/implementation/m8-status.md`.
+2. Manual upgrade smoke for persisted SQLite user data: closed for Windows MSI, Linux raw-binary and Linux installed RPM transaction profiles by `docs/implementation/m8-status.md`.
 3. Sound experiments: развивать Web Audio API после стабилизации core time semantics.

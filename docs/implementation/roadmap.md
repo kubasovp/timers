@@ -2,8 +2,8 @@
 
 Status: Draft  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-07-03
-Scope: Порядок реализации MVP и контрольные точки качества  
+Last updated (UTC): 2026-07-07
+Scope: Порядок реализации MVP `0.1.0` и контрольные точки качества
 Canonical: docs/implementation/roadmap.md
 
 ## 1) Принципы реализации
@@ -169,6 +169,8 @@ Exit gate:
 
 ### M8. MVP hardening and release candidate
 
+Status: Implemented. See `docs/implementation/m8-status.md`.
+
 Цель: довести продукт до release-candidate качества.
 
 Deliverables:
@@ -184,8 +186,10 @@ Exit gate:
 - нет high-severity дефектов по recovery/time semantics;
 - MVP можно собрать и запустить на целевых платформах.
 
-Post-M8 UI polish backlog:
-- отключить accidental text selection (`user-select`) на buttons, controls, app chrome и других не-текстовых interactive surfaces; оставить выделение там, где пользователь реально работает с текстовым содержимым.
+MVP `0.1.0` boundary:
+- M8 closes the `0.1.0` MVP roadmap. New product capabilities should be tracked outside this MVP roadmap unless they are `0.1.x` hotfixes.
+- Candidate `0.2.0` scope for settings/about secondary screens, visual alerts, Do Not Disturb behavior and accessibility/keyboard checks is tracked in `docs/implementation/m9-product-hardening-draft.md`.
+- UI polish follow-up: отключить accidental text selection (`user-select`) на buttons, controls, app chrome и других не-текстовых interactive surfaces; оставить выделение там, где пользователь реально работает с текстовым содержимым.
 
 ## 3) Near-term backlog after M3
 

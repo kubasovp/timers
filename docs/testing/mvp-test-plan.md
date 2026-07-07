@@ -2,7 +2,7 @@
 
 Status: Draft  
 Owner: github.com/kubasovp  
-Last updated (UTC): 2026-07-02
+Last updated (UTC): 2026-07-07
 Scope: Acceptance gates для MVP реализации  
 Canonical: docs/testing/mvp-test-plan.md
 
@@ -49,11 +49,14 @@ Canonical: docs/testing/mvp-test-plan.md
 - Upgrade smoke: install version `N`, create persisted timer/focus/reminder data, install version `N+1` over it, and verify that SQLite data remains in user app data rather than the install directory and is still visible/editable after restart.
 
 Current automated coverage note:
-- Browser E2E includes reload recovery for active custom timer and focus session. Packaged/native restart and upgrade smoke remain M8 manual checks.
+- Browser E2E includes reload recovery for active custom timer and focus session.
 - Browser E2E also covers suppression of the WebView default context menu.
+- M8 automated gate on 2026-07-07 passed `npm run check` and `npm run test:e2e`.
 
 Current manual smoke note:
 - Windows MSI upgrade smoke from `0.1.0` to temporary `0.1.1` passed on 2026-07-04: active focus session, active custom timer, completed timer, and one-time/daily/interval reminders remained visible after upgrade. Follow-up packaged Windows smoke with temporary `0.1.2`/`0.1.3` confirmed the release binary uses the `Windows GUI` subsystem and no longer opens a console window.
+- Fedora Linux RPM smoke passed on 2026-07-07: `npm run tauri:build -- --bundles rpm` produced `src-tauri/target/release/bundle/rpm/Timers-0.1.0-1.x86_64.rpm`; the raw release binary started with native SQLite enabled, created `timers.db`, and applied `custom-timer.v1`, `focus.v1`, `reminders.v1` and `system.v1`.
+- Fedora Linux upgrade smoke from `0.1.0` to temporary `0.1.1` passed both with raw release binaries in a temporary XDG profile and through a GUI RPM install/update transaction. Created reminders remained present and active timers preserved state after upgrade.
 
 ## 5) Exit criteria для MVP
 

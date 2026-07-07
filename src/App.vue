@@ -7,7 +7,7 @@ const props = defineProps<{
   runtime: AppRuntime;
 }>();
 
-const appVersion = packageInfo.version;
+const appVersion = import.meta.env.VITE_APP_VERSION ?? packageInfo.version;
 const panels = computed(() =>
   props.runtime.registries.navigation
     .list()

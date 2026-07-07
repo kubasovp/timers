@@ -28,7 +28,7 @@ _Timers v0.1.0 Windows preview: фокус-сессия, произвольны�
 
 ## Релизы и скачивание
 
-Публичные сборки публикуются в [GitHub Releases](https://github.com/kubasovp/timers/releases). Первый опубликованный релиз - [v0.1.0 Windows preview](https://github.com/kubasovp/timers/releases/tag/v0.1.0) с Windows x64 установщиками. Linux-артефакты будут добавлены после отдельной проверки на Linux.
+Публичные сборки публикуются в [GitHub Releases](https://github.com/kubasovp/timers/releases). Первый опубликованный релиз - [v0.1.0 Linux and Windows preview](https://github.com/kubasovp/timers/releases/tag/v0.1.0) с Linux x64 RPM и Windows x64 установщиками. Linux RPM прошёл M8-проверку, включая GUI RPM upgrade smoke.
 
 Для версий `0.1.x` обновление предполагается вручную: скачать новый установщик из GitHub Releases и установить его поверх предыдущей версии. Локальные данные должны сохраниться после обновления.
 

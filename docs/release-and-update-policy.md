@@ -2,7 +2,7 @@
 
 Status: Draft
 Owner: github.com/kubasovp
-Last reviewed (UTC): 2026-07-02
+Last reviewed (UTC): 2026-07-07
 Scope: Черновой процесс релизов, обновлений и fallback-поведения
 Canonical: docs/release-and-update-policy.md
 
@@ -26,6 +26,7 @@ Canonical: docs/release-and-update-policy.md
 ## 4. Build Artifacts (Draft)
 - Raw release binaries are emitted directly under `src-tauri/target/release/`: `timers` on Linux and `timers.exe` on Windows.
 - Installer/package artifacts are emitted under `src-tauri/target/release/bundle/<format>/`.
+- `npm run tauri:build` runs `pretauri:build` first, which removes stale generated Tauri `tauri-codegen-assets` under `src-tauri/target` before packaging.
 - Fedora RPM package smoke uses:
 
 ```bash

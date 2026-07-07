@@ -150,3 +150,6 @@ src-tauri/target/
 # Test outputs
 test-results/
 playwright-report/
+
+# Local manual smoke screenshots
+screenshots/
